@@ -12,7 +12,7 @@ export const eventsRouter: Router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB — covers 4K JPEGs and most GIFs
 });
 
 // ── GET /api/events ──────────────────────────────────────────

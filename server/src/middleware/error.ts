@@ -1,4 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
+import { MulterError } from "multer";
 import { ZodError } from "zod";
 
 export class HttpError extends Error {
@@ -46,6 +47,26 @@ export function errorHandler(
       error: err.message,
       details: err.details ?? undefined,
     });
+    return;
+  }
+
+  if (err instanceof MulterError) {
+    // Translate the most common multer codes to clear, actionable messages.
+    const map: Record<string, { status: number; message: string }> = {
+      LIMIT_FILE_SIZE: {
+        status: 413,
+        message: "cover image too large (max 10 MB)",
+      },
+      LIMIT_UNEXPECTED_FILE: {
+        status: 400,
+        message: `unexpected file field "${err.field ?? "?"}"`,
+      },
+      LIMIT_FILE_COUNT: { status: 400, message: "too many files" },
+    };
+    const mapped = map[err.code];
+    res
+      .status(mapped?.status ?? 400)
+      .json({ error: mapped?.message ?? `upload_error: ${err.code}` });
     return;
   }
 
