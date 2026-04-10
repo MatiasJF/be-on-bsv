@@ -31,7 +31,13 @@ services:
     branch: main
     autoDeploy: true
     healthCheckPath: /api/health
-    buildCommand: npm install && npm run build
+    # --include=dev forces npm to install devDependencies even when
+    # NODE_ENV=production. We need them for the build step: typescript,
+    # @types/express, @types/multer, @types/qrcode, @types/node, vite,
+    # @vitejs/plugin-react, tailwindcss, etc. all live in devDependencies.
+    # Without this flag the build fails with TS2307/TS7016 "cannot find
+    # declaration file" errors on the first deploy.
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
 
     envVars:
