@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────────────────────
+# BE on BSV — Render Blueprint
+#
+# Deploy via:
+#   1. Push this file to GitHub (already done — you're reading it)
+#   2. Visit https://dashboard.render.com/blueprints/new
+#   3. Connect the github.com/MatiasJF/be-on-bsv repo
+#   4. Render reads this file and offers to create the service
+#   5. Fill in the env vars marked `sync: false` in the dashboard
+#   6. Hit Apply
+#
+# After the first deploy, copy the assigned *.onrender.com URL into:
+#   • PUBLIC_APP_URL  (this service's env var)
+#   • Supabase → Authentication → URL Configuration → Site URL
+#   • Supabase → Authentication → URL Configuration → Redirect URLs
+#     (add: https://<your-service>.onrender.com/**)
+#
+# Then trigger a manual redeploy so the new PUBLIC_APP_URL takes effect.
+#
+# See README.md "Deploying" section for the full runbook including
+# the BSV key rotation step (the dev WIF in your local .env is
+# compromised — chat history — and MUST be replaced for production).
+# ─────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: be-on-bsv
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+
+    envVars:
+      # ── Runtime ────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+
+      # PUBLIC_APP_URL is read by the server for confirmation links
+      # in emails and QR codes. Set this in the dashboard AFTER the
+      # first deploy when you know the assigned *.onrender.com URL.
+      - key: PUBLIC_APP_URL
+        sync: false
+
+      # ── Supabase (server) ──────────────────────────────────
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+
+      # ── Supabase (client — read at BUILD time by Vite) ─────
+      # Changing these requires a redeploy, not just a restart.
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_API_BASE
+        value: /api
+
+      # ── BSV (start in stub mode, flip to live after funding) ─
+      - key: BSV_ENABLED
+        value: "false"
+      # Generate a FRESH key for production with:
+      #   npm --workspace server run bsv:generate-key
+      # NEVER reuse a key that's been in chat history or unencrypted notes.
+      - key: BSV_SERVER_PRIVATE_KEY
+        sync: false
+      - key: BSV_NETWORK
+        value: main
+      - key: BSV_STORAGE_URL
+        value: https://storage.babbage.systems
+      - key: BSV_TICKET_BASKET
+        value: be-on-bsv-tickets
+
+      # ── Email (Resend, optional) ──────────────────────────
+      # Without these, registration confirmation emails are logged
+      # to the server console only — fine for first-day deploys.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
