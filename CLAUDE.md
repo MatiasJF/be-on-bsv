@@ -249,13 +249,48 @@ Per §07 of the brand guide: photography is full-colour, framed in a large trian
 `@bsv/simple` is the high-level wrapper: it exposes `@bsv/simple/server` (server-side wallet from a private key, via `@bsv/wallet-toolbox`) and `@bsv/simple/browser` (client-side `WalletClient` from `@bsv/sdk`). For this app **all on-chain action happens server-side** so a user never needs a wallet to register.
 
 ### What we mint
-On a successful registration we mint a **PushDrop "ticket"** containing:
-- The event id (uuid)
-- The registration id (uuid)
-- A short label `BE-on-BSV`
-- Issued-at timestamp
+On a successful registration we mint a **token in the `BSV_TICKET_BASKET` basket** (default `be-on-bsv-tickets`). The token's `data` payload is:
+```json
+{
+  "label": "BE-on-BSV",
+  "eventId": "<uuid>",
+  "registrationId": "<uuid>",
+  "issuedAt": "<iso-8601>"
+}
+```
 
-The resulting `txid` and `outpoint` are stored on the `registrations` row. The QR on the confirmation email/page encodes the outpoint, so a future "check-in" tool can verify it.
+The resulting `txid` and `outpoint` are stored on the `registrations` row. The QR on the confirmation email/page encodes the outpoint, so a future "check-in" tool can verify it (or `redeemToken` it on attendance).
+
+### `@bsv/simple/server` API surface (verified via simple-mcp)
+
+```ts
+import { ServerWallet } from "@bsv/simple/server";
+
+// 1. Construct once, lazily — singleton in services/bsv.ts.
+const wallet = await ServerWallet.create({
+  privateKey: process.env.BSV_SERVER_PRIVATE_KEY,
+  network: "main",                           // or "test"
+  storageUrl: "https://storage.babbage.systems",
+});
+
+// 2. Mint a ticket as a basket token.
+const result = await wallet.createToken({
+  data: { label: "BE-on-BSV", eventId, registrationId, issuedAt },
+  basket: "be-on-bsv-tickets",
+  satoshis: 1,
+});
+// → { txid, basket, encrypted }
+// Note: createToken does NOT return the vout. Single-output token txs put it
+// at vout 0; services/bsv.ts confirms via listTokenDetails() and falls back
+// to `${txid}.0` if listing fails.
+
+// 3. Read all tickets back.
+const tickets = await wallet.listTokenDetails("be-on-bsv-tickets");
+// → [{ outpoint, satoshis, data }, ...]
+
+// 4. Mark a ticket as redeemed (e.g. on event check-in).
+await wallet.redeemToken({ basket: "be-on-bsv-tickets", outpoint });
+```
 
 ### Implementation skeleton
 `server/src/services/bsv.ts` exposes:
@@ -263,11 +298,13 @@ The resulting `txid` and `outpoint` are stored on the `registrations` row. The Q
 export async function mintRegistrationTicket(input: {
   eventId: string;
   registrationId: string;
-}): Promise<{ txid: string; outpoint: string }>;
+}): Promise<{ tx_id: string; outpoint: string; stub: boolean }>;
+
+export async function listAllTickets(): Promise<unknown[]>;
 ```
-- Wraps `createWallet` from `@bsv/simple/server` using `BSV_SERVER_PRIVATE_KEY` from env.
-- If `BSV_ENABLED !== 'true'`, returns a deterministic stub `{ txid: 'stub-' + sha256(input).slice(0,32), outpoint: '...' }` so local dev works with no keys.
-- Errors are caught and logged but **do not fail the registration** — the row is still inserted; `tx_id` is left null and the email goes out without a verifiable ticket. The admin dashboard surfaces failed mints.
+- Lazy-imports `@bsv/simple/server` and constructs `ServerWallet` only on first real call. Cached as a module-level singleton afterwards.
+- If `BSV_ENABLED !== 'true'`, returns a deterministic stub `{ tx_id: 'stub-…', outpoint: '…', stub: true }` so local dev works with no keys.
+- Errors are caught at the route layer and logged but **do not fail the registration** — the row is still inserted; `tx_id` is left null and the email goes out without a verifiable ticket. The admin dashboard surfaces failed mints.
 
 ### MCP note
 There is an `@bsv/simple-mcp` server that exposes BSV tooling to Claude as MCP tools. Install:
@@ -290,8 +327,11 @@ All env vars are loaded once via `server/src/env.ts` (zod-validated). Document n
 | `SUPABASE_ANON_KEY` | server, client | yes | Public anon key (used by client; injected at build). |
 | `SUPABASE_SERVICE_ROLE_KEY` | server | yes | Service-role key. **Server only — never bundle.** |
 | `SUPABASE_JWT_SECRET` | server | yes | Used to verify admin JWTs in `requireAdmin`. |
-| `BSV_ENABLED` | server | no (default `false`) | Toggle the real PushDrop mint. `false` → stub. |
+| `BSV_ENABLED` | server | no (default `false`) | Toggle the real on-chain mint. `false` → stub. |
 | `BSV_SERVER_PRIVATE_KEY` | server | only if `BSV_ENABLED=true` | WIF private key for the server wallet. |
+| `BSV_NETWORK` | server | no (default `main`) | `main` or `test` — passed to `ServerWallet.create`. |
+| `BSV_STORAGE_URL` | server | no | Wallet-toolbox storage backend. Defaults to `https://storage.babbage.systems`. |
+| `BSV_TICKET_BASKET` | server | no | Logical basket for ticket tokens. Defaults to `be-on-bsv-tickets`. |
 | `RESEND_API_KEY` | server | no | Send real confirmation emails. Missing → console-log fallback. |
 | `EMAIL_FROM` | server | only if `RESEND_API_KEY` set | e.g. `events@buildeasy.bsvassociation.org`. |
 | `PUBLIC_APP_URL` | server | yes in prod | Used for confirmation links and QR payload. |

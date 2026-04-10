@@ -24,6 +24,9 @@ const EnvSchema = z.object({
     .optional()
     .transform((v) => v === "true"),
   BSV_SERVER_PRIVATE_KEY: z.string().optional(),
+  BSV_NETWORK: z.enum(["main", "test"]).default("main"),
+  BSV_STORAGE_URL: z.string().url().default("https://storage.babbage.systems"),
+  BSV_TICKET_BASKET: z.string().default("be-on-bsv-tickets"),
 
   // Email
   RESEND_API_KEY: z.string().optional(),

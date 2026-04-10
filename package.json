@@ -20,7 +20,7 @@
     "start": "npm --workspace server run start",
     "typecheck": "npm --workspace shared run typecheck && npm --workspace server run typecheck && npm --workspace client run typecheck",
     "lint": "echo 'lint not configured yet'",
-    "test": "echo 'no tests yet'",
+    "test": "npm --workspace server run test",
     "db:reset": "echo 'see database/README.md for how to apply migrations to your Supabase project'"
   },
   "devDependencies": {

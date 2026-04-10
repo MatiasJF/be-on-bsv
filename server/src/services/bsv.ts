@@ -2,21 +2,26 @@ import { createHash } from "node:crypto";
 import { env } from "../env.js";
 
 /**
- * Mints a PushDrop "ticket" for a registration.
+ * BSV "ticket" service.
  *
- * When `BSV_ENABLED=true` and a server private key is configured, this calls
- * `@bsv/simple/server` to mint a real on-chain PushDrop containing the event id,
- * registration id, and an `BE-on-BSV` label.
+ * Each registration is recorded on-chain as a token in the
+ * `BSV_TICKET_BASKET` basket via `@bsv/simple/server`'s `ServerWallet`.
+ * The token's `data` payload carries the event id, registration id,
+ * a short label, and the issued-at timestamp.
  *
- * When disabled (the default for local dev), it returns a deterministic stub
- * txid + outpoint derived from the input. This lets the rest of the app develop
- * normally without funded keys, and the admin dashboard can distinguish stubs
- * from real tickets via the `stub` flag.
+ * The exact API surface (`ServerWallet.create`, `wallet.createToken`,
+ * `wallet.listTokenDetails`, `wallet.redeemToken`) was confirmed via the
+ * `@bsv/simple-mcp` server — see CLAUDE.md §6 for the rationale.
  *
- * Failures are caller-handled: a thrown error here means the registration row
- * is still inserted (see registrations route) but the ticket fields are left
- * null and the admin can retry later.
+ * Local-dev safety: when `BSV_ENABLED=false` (the default), this service
+ * returns a deterministic stub txid + outpoint instead of touching the chain.
+ * That keeps the rest of the app developable without keys or funded wallets.
+ *
+ * Failure isolation: errors thrown from here do NOT roll back the
+ * registration. The route handler keeps the row, leaves `tx_id` null, and
+ * surfaces failed mints to the admin dashboard for retry.
  */
+
 export interface MintInput {
   eventId: string;
   registrationId: string;
@@ -28,56 +33,116 @@ export interface MintResult {
   stub: boolean;
 }
 
+interface TicketTokenData {
+  label: "BE-on-BSV";
+  eventId: string;
+  registrationId: string;
+  issuedAt: string;
+}
+
+// ── lazy singleton wallet ───────────────────────────────────
+// We don't construct the wallet at module load — that would force everyone
+// (including tests + local dev with BSV_ENABLED=false) to install and connect
+// to the storage backend. Instead the wallet is built on first real use.
+//
+// The type is `unknown` here because we lazy-import @bsv/simple/server and
+// don't want to drag its types into modules that never use the real path.
+let walletPromise: Promise<unknown> | null = null;
+
+async function getWallet(): Promise<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  createToken: (input: { data: unknown; basket: string; satoshis: number }) => Promise<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  listTokenDetails: (basket: string) => Promise<any[]>;
+}> {
+  if (!walletPromise) {
+    walletPromise = (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod: any = await import("@bsv/simple/server");
+      const ServerWallet = mod.ServerWallet ?? mod.default?.ServerWallet;
+      if (!ServerWallet || typeof ServerWallet.create !== "function") {
+        throw new Error(
+          "@bsv/simple/server did not expose ServerWallet.create — package shape may have changed",
+        );
+      }
+      return ServerWallet.create({
+        privateKey: env.BSV_SERVER_PRIVATE_KEY,
+        network: env.BSV_NETWORK,
+        storageUrl: env.BSV_STORAGE_URL,
+      });
+    })();
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return walletPromise as Promise<any>;
+}
+
+// ── public API ──────────────────────────────────────────────
+
 export async function mintRegistrationTicket(input: MintInput): Promise<MintResult> {
   if (!env.BSV_ENABLED) {
     return makeStub(input);
   }
 
-  // Real path. Lazy-import so dev environments without the package installed
-  // (or without a wallet) can still run.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod: any = await import("@bsv/simple/server");
-    const { createWallet } = mod;
+    const wallet = await getWallet();
 
-    const wallet = await createWallet({
-      privateKey: env.BSV_SERVER_PRIVATE_KEY,
-    });
+    const data: TicketTokenData = {
+      label: "BE-on-BSV",
+      eventId: input.eventId,
+      registrationId: input.registrationId,
+      issuedAt: new Date().toISOString(),
+    };
 
-    // PushDrop payload — keep it small. Each field becomes a push.
-    const payload = [
-      "BE-on-BSV",
-      input.eventId,
-      input.registrationId,
-      new Date().toISOString(),
-    ];
-
-    // The `@bsv/simple` API for PushDrop varies by version; the high-level
-    // `createPushDrop` is what we want. If the API surface changes, this is
-    // the only place that needs to update.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await wallet.createPushDrop({
-      data: payload,
+    const result = await wallet.createToken({
+      data,
+      basket: env.BSV_TICKET_BASKET,
       satoshis: 1,
     });
 
-    const txid: string = result.txid ?? result.tx_id;
-    const vout: number = result.vout ?? 0;
-
+    const txid: string | undefined = result?.txid ?? result?.tx_id;
     if (!txid) {
-      throw new Error("PushDrop mint returned no txid");
+      throw new Error("createToken returned no txid");
     }
 
-    return {
-      tx_id: txid,
-      outpoint: `${txid}.${vout}`,
-      stub: false,
-    };
+    // `createToken` doesn't return the vout directly. The convention for
+    // single-output token transactions is vout 0; we resolve the real outpoint
+    // from `listTokenDetails` so any future API change is caught here rather
+    // than silently producing wrong outpoints.
+    const outpoint = await resolveOutpoint(wallet, txid);
+
+    return { tx_id: txid, outpoint, stub: false };
   } catch (err) {
-    // Re-throw with context. The caller decides what to do.
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`PushDrop ticket mint failed: ${msg}`);
   }
+}
+
+/**
+ * Optional: list all tickets in our basket. Useful for the admin dashboard
+ * to reconcile failed mints, or to debug from the server console.
+ */
+export async function listAllTickets(): Promise<unknown[]> {
+  if (!env.BSV_ENABLED) return [];
+  const wallet = await getWallet();
+  return wallet.listTokenDetails(env.BSV_TICKET_BASKET);
+}
+
+// ── helpers ─────────────────────────────────────────────────
+
+async function resolveOutpoint(
+  wallet: { listTokenDetails: (basket: string) => Promise<unknown[]> },
+  txid: string,
+): Promise<string> {
+  try {
+    const tokens = (await wallet.listTokenDetails(env.BSV_TICKET_BASKET)) as Array<{
+      outpoint?: string;
+    }>;
+    const match = tokens.find((t) => typeof t.outpoint === "string" && t.outpoint.startsWith(txid));
+    if (match?.outpoint) return match.outpoint;
+  } catch {
+    // fall through to vout-0 default
+  }
+  return `${txid}.0`;
 }
 
 function makeStub(input: MintInput): MintResult {
