@@ -1,0 +1,52 @@
+# --- BSVA brand source archives (NEVER commit, see CLAUDE.md §5) ---
+00_BSVA_Style_Guidelines.zip
+01_BSVA_Brand_Master_Assets.zip
+_brand_workspace/
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Builds ---
+dist/
+build/
+client/dist/
+server/dist/
+shared/dist/
+*.tsbuildinfo
+
+# --- Env / secrets ---
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+!.env.example
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*~
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Coverage ---
+coverage/
+.nyc_output/
+
+# --- Vite ---
+.vite/
+
+# --- Supabase local ---
+.supabase/
+supabase/.temp/

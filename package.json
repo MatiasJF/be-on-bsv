@@ -1,0 +1,33 @@
+{
+  "name": "be-on-bsv",
+  "private": true,
+  "version": "0.1.0",
+  "description": "BE on BSV — event platform for the Build Easy on BSV session series",
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:client": "npm --workspace client run dev",
+    "build": "npm --workspace shared run build && npm --workspace server run build && npm --workspace client run build",
+    "build:shared": "npm --workspace shared run build",
+    "build:server": "npm --workspace server run build",
+    "build:client": "npm --workspace client run build",
+    "start": "npm --workspace server run start",
+    "typecheck": "npm --workspace shared run typecheck && npm --workspace server run typecheck && npm --workspace client run typecheck",
+    "lint": "echo 'lint not configured yet'",
+    "test": "echo 'no tests yet'",
+    "db:reset": "echo 'see database/README.md for how to apply migrations to your Supabase project'"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
