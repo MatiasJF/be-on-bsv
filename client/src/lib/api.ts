@@ -72,6 +72,7 @@ export const api = {
     request<{
       registration: Registration;
       event: { title: string; starts_at: string; location: string | null; is_virtual: boolean; cover_url: string | null } | null;
+      whats_on_chain_url: string | null;
     }>(`/register/${id}`),
 
   // ── Admin ──

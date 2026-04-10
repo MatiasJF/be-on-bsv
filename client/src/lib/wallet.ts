@@ -53,7 +53,7 @@ export function useWallet() {
       const msg = e instanceof Error ? e.message : "wallet connection failed";
       // The most common cause is "no browser wallet installed". Translate.
       const friendly = /not\s*found|no wallet|undefined/i.test(msg)
-        ? "No BSV browser wallet detected. Install Babbage MetaNet Desktop (https://projectbabbage.com/desktop) or another @bsv/simple-compatible wallet, then retry."
+        ? "No BSV browser wallet detected. Install MetaNet Desktop (https://hub.bsvblockchain.org/demos-and-onboardings/onboardings/onboarding-catalog/metanet-desktop-mainnet) or another @bsv/simple-compatible wallet, then retry."
         : msg;
       setState({ wallet: null, identityKey: null, loading: false, error: friendly });
     }

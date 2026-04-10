@@ -11,6 +11,7 @@ import { formatEventDateTime } from "../lib/format.js";
 interface State {
   registration: Registration;
   event: { title: string; starts_at: string; location: string | null; is_virtual: boolean; cover_url: string | null } | null;
+  whats_on_chain_url: string | null;
 }
 
 export function RegisterConfirmed() {
@@ -29,7 +30,11 @@ export function RegisterConfirmed() {
 
   useEffect(() => {
     if (!state) return;
-    const payload = state.registration.outpoint ?? `registration:${state.registration.id}`;
+    // Real ticket → QR encodes a WhatsOnChain URL so a phone scan opens
+    // the on-chain proof directly. Stub or missing tx → fall back to the
+    // confirmation page so the QR still scans to something useful.
+    const payload =
+      state.whats_on_chain_url ?? `${window.location.origin}/r/${state.registration.id}`;
     QRCode.toString(payload, {
       type: "svg",
       errorCorrectionLevel: "M",
@@ -102,6 +107,16 @@ export function RegisterConfirmed() {
             <div className="font-mono text-xs text-white/80 break-all">
               {registration.tx_id}
             </div>
+            {state.whats_on_chain_url && (
+              <a
+                href={state.whats_on_chain_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 mt-3 text-bsva-cyan hover:text-white text-xs font-display font-semibold transition-colors"
+              >
+                View on WhatsOnChain ↗
+              </a>
+            )}
           </div>
         ) : (
           <div className="text-white/60 font-body text-sm mb-6">

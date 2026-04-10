@@ -156,9 +156,20 @@ export function WalletPanel() {
         {!wallet ? (
           <>
             <p className="text-sm text-white/60 font-body mb-4 leading-relaxed">
-              Connect a BSV browser wallet (Babbage MetaNet Desktop, etc.) to send sats to the
-              server wallet's identity key. The server wallet then has the UTXOs it needs to mint
-              real on-chain tickets for every registration.
+              Connect a BSV browser wallet to send sats to the server wallet's identity key. The
+              server wallet then has the UTXOs it needs to mint real on-chain tickets for every
+              registration.
+            </p>
+            <p className="text-xs text-white/50 font-body mb-4">
+              Don't have one yet?{" "}
+              <a
+                href="https://hub.bsvblockchain.org/demos-and-onboardings/onboardings/onboarding-catalog/metanet-desktop-mainnet"
+                target="_blank"
+                rel="noreferrer"
+                className="text-bsva-cyan hover:text-white transition-colors"
+              >
+                Install MetaNet Desktop ↗
+              </a>
             </p>
             <Button
               variant="primary"

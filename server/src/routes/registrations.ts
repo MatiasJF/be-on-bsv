@@ -6,6 +6,7 @@ import { sendRegistrationEmail } from "../services/email.js";
 import { renderQrPngDataUrl } from "../services/qr.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { HttpError, asyncHandler } from "../middleware/error.js";
+import { whatsOnChainTxUrl } from "../lib/whatsonchain.js";
 import { env } from "../env.js";
 
 export const registrationsRouter: Router = Router();
@@ -75,7 +76,11 @@ registrationsRouter.post(
     //    doesn't fail the request — registration is already persisted.
     try {
       const confirmationUrl = `${env.PUBLIC_APP_URL}/r/${registration.id}`;
-      const qrPayload = ticket?.outpoint ?? `registration:${registration.id}`;
+      // QR encodes a WhatsOnChain link for real tickets so a phone scan
+      // takes you straight to the on-chain proof. Stub tickets fall back
+      // to the confirmation page so the QR still scans to something useful.
+      const wocUrl = whatsOnChainTxUrl(ticket?.tx_id, env.BSV_NETWORK);
+      const qrPayload = wocUrl ?? confirmationUrl;
       const qrPngDataUrl = await renderQrPngDataUrl(qrPayload);
 
       await sendRegistrationEmail({
@@ -123,7 +128,11 @@ registrationsRouter.get(
       .eq("id", reg.event_id)
       .maybeSingle();
 
-    res.json({ registration: reg, event });
+    res.json({
+      registration: reg,
+      event,
+      whats_on_chain_url: whatsOnChainTxUrl(reg.tx_id, env.BSV_NETWORK),
+    });
   }),
 );
 

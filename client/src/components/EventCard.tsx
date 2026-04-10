@@ -16,10 +16,12 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05, ease: [0.16, 1, 0.3, 1] }}
+      className="h-full"
     >
-      <Link to={`/events/${event.id}`} className="block group">
-        <GlassCard className="overflow-hidden transition-all duration-300 group-hover:scale-[1.015] group-hover:shadow-cyan-glow">
-          <div className="aspect-[16/9] relative overflow-hidden bg-bsva-navy/40">
+      <Link to={`/events/${event.id}`} className="block group h-full">
+        <GlassCard className="h-full flex flex-col overflow-hidden transition-all duration-300 group-hover:scale-[1.015] group-hover:shadow-cyan-glow">
+          {/* Cover — fixed aspect ratio, never grows */}
+          <div className="aspect-[16/9] relative overflow-hidden bg-bsva-navy/40 flex-none">
             {event.cover_url ? (
               <img
                 src={event.cover_url}
@@ -34,25 +36,30 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
               {formatEventDate(event.starts_at)} · {formatEventTime(event.starts_at)}
             </div>
           </div>
-          <div className="p-6">
-            <h3 className="font-display font-semibold text-xl text-white leading-tight mb-2">
+
+          {/* Content — flex column with reserved heights so every card lines up */}
+          <div className="p-6 flex flex-col flex-1">
+            {/* Title — exactly 2 lines reserved */}
+            <h3 className="font-display font-semibold text-xl text-white leading-snug mb-2 line-clamp-2 min-h-[3.25rem]">
               {event.title}
             </h3>
-            {event.location && (
-              <div className="text-white/60 text-sm font-body mb-3">
-                {event.is_virtual ? "Online" : event.location}
-              </div>
-            )}
-            <p className="text-white/70 text-sm font-body line-clamp-2 mb-4">
+
+            {/* Location — exactly 1 line reserved (renders empty when missing so the row stays) */}
+            <div className="text-white/60 text-sm font-body mb-3 truncate min-h-[1.25rem]">
+              {event.is_virtual ? "Online" : event.location ?? ""}
+            </div>
+
+            {/* Description — exactly 2 lines reserved */}
+            <p className="text-white/70 text-sm font-body line-clamp-2 mb-4 min-h-[2.5rem]">
               {event.description}
             </p>
-            {event.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {event.tags.slice(0, 4).map((t) => (
-                  <Tag key={t} label={t} />
-                ))}
-              </div>
-            )}
+
+            {/* Tags — pinned to the bottom of the card via mt-auto */}
+            <div className="flex flex-wrap gap-2 mt-auto min-h-[1.75rem]">
+              {event.tags.slice(0, 4).map((t) => (
+                <Tag key={t} label={t} />
+              ))}
+            </div>
           </div>
         </GlassCard>
       </Link>

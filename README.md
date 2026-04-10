@@ -77,7 +77,7 @@ Live mode means **every registration creates a real on-chain BRC-29 PushDrop tok
 
 ### Prereqs
 
-- A BSV browser wallet that supports `@bsv/simple/browser`'s `createWallet()`. The canonical option is **[Babbage MetaNet Desktop](https://projectbabbage.com/desktop)** — free download for macOS/Windows/Linux. Install it and complete its first-run setup.
+- A BSV browser wallet that supports `@bsv/simple/browser`'s `createWallet()`. The canonical option is **[MetaNet Desktop (mainnet)](https://hub.bsvblockchain.org/demos-and-onboardings/onboardings/onboarding-catalog/metanet-desktop-mainnet)** — install via the BSV Blockchain Hub onboarding flow, free download for macOS/Windows/Linux. Install it and complete its first-run setup.
 - A small amount of real BSV in that browser wallet. **A few thousand satoshis is enough** to mint hundreds of tickets at 1 sat each. You can pick that up from any BSV exchange or on-ramp; typical cost is a few cents.
 
 ### Server setup (one-time)
@@ -144,7 +144,7 @@ The server wallet's balance drops by 1 sat per ticket, plus a tiny mining fee pe
 | Boot banner says `bsv=stub` after restart | `.env` not saved, or `BSV_ENABLED` is in a comment / typo'd. Run `npm --workspace server run bsv:check` to confirm the env is being read. |
 | `bsv:check` exits 1 with `ServerWallet.create` error | Bad WIF format, or `https://storage.babbage.systems` is unreachable. Check network + try again. |
 | Wallet panel left card shows `Stub mode` after restart | Same as above — server didn't pick up the env change. |
-| `Connect browser wallet` button shows "No BSV browser wallet detected" | Babbage MetaNet Desktop isn't installed or isn't running. Launch it and retry. |
+| `Connect browser wallet` button shows "No BSV browser wallet detected" | MetaNet Desktop isn't installed or isn't running. Install it from https://hub.bsvblockchain.org/demos-and-onboardings/onboardings/onboarding-catalog/metanet-desktop-mainnet and launch it. |
 | Funding tx broadcasts but balance stays at 0 | Server `receiveDirectPayment` failed — check the dev server log for `[unhandled]` errors. Most likely a derivation prefix/suffix mismatch. Open an issue. |
 | First real registration fails with `createToken returned no txid` | The wallet has no spendable UTXOs (you funded with the wrong basket, or the UTXO hasn't confirmed yet). Check the left card — `utxoCount` should be ≥ 1. |
 

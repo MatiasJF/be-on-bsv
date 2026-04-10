@@ -353,7 +353,7 @@ For local dev with `BSV_ENABLED=true`:
 
 3. **Open the admin dashboard.** The "Server wallet" card now shows the wallet's identity key, network, and (initially zero) balance. The "Fund from your browser wallet" card shows a Connect button.
 
-4. **Connect a BSV browser wallet** that supports `@bsv/simple/browser`'s `createWallet()` (Babbage MetaNet Desktop is the canonical option, https://projectbabbage.com/desktop).
+4. **Connect a BSV browser wallet** that supports `@bsv/simple/browser`'s `createWallet()`. The canonical option is MetaNet Desktop, installed via the BSV Blockchain Hub onboarding: https://hub.bsvblockchain.org/demos-and-onboardings/onboardings/onboarding-catalog/metanet-desktop-mainnet
 
 5. **Send a small amount** (a few thousand sats is enough for many tickets at 1 sat each). The browser wallet prompts for confirmation, broadcasts the funding tx, and posts the bytes back to the server. The "Server wallet" panel auto-refreshes — you should see the new balance within ~1-2s.
 
