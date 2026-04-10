@@ -5,6 +5,7 @@ import { env } from "./env.js";
 import { eventsRouter } from "./routes/events.js";
 import { registrationsRouter } from "./routes/registrations.js";
 import { exportsRouter } from "./routes/exports.js";
+import { adminRouter } from "./routes/admin.js";
 import { errorHandler } from "./middleware/error.js";
 
 /**
@@ -41,6 +42,7 @@ export function createApp(): Express {
   app.use("/api/events", eventsRouter);
   app.use("/api", registrationsRouter); // mounts /register, /register/:id, /registrations/:id
   app.use("/api", exportsRouter); // mounts /export/:id
+  app.use("/api/admin", adminRouter); // mounts /wallet/info, /wallet/funding-request
 
   // ── Static client (production only) ──
   if (env.NODE_ENV === "production") {

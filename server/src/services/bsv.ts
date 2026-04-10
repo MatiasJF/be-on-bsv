@@ -10,8 +10,10 @@ import { env } from "../env.js";
  * a short label, and the issued-at timestamp.
  *
  * The exact API surface (`ServerWallet.create`, `wallet.createToken`,
- * `wallet.listTokenDetails`, `wallet.redeemToken`) was confirmed via the
- * `@bsv/simple-mcp` server — see CLAUDE.md §6 for the rationale.
+ * `wallet.listTokenDetails`, `wallet.createPaymentRequest`,
+ * `wallet.receiveDirectPayment`) was confirmed via the
+ * `@bsv/simple-mcp` server and the package's own .d.ts files.
+ * See CLAUDE.md §6 for the rationale.
  *
  * Local-dev safety: when `BSV_ENABLED=false` (the default), this service
  * returns a deterministic stub txid + outpoint instead of touching the chain.
@@ -33,6 +35,34 @@ export interface MintResult {
   stub: boolean;
 }
 
+export interface ServerWalletPaymentRequest {
+  serverIdentityKey: string;
+  derivationPrefix: string;
+  derivationSuffix: string;
+  satoshis: number;
+  memo?: string;
+}
+
+export interface IncomingPaymentInput {
+  tx: number[]; // serialized tx bytes (Array.from(uint8))
+  senderIdentityKey: string;
+  derivationPrefix: string;
+  derivationSuffix: string;
+  outputIndex: number;
+  description?: string;
+}
+
+export interface ServerWalletInfo {
+  enabled: boolean;
+  identityKey: string | null;
+  network: "main" | "test" | null;
+  basket: string;
+  totalSatoshis: number | null;
+  utxoCount: number | null;
+  status: string | null;
+  error?: string;
+}
+
 interface TicketTokenData {
   label: "BE-on-BSV";
   eventId: string;
@@ -44,17 +74,12 @@ interface TicketTokenData {
 // We don't construct the wallet at module load — that would force everyone
 // (including tests + local dev with BSV_ENABLED=false) to install and connect
 // to the storage backend. Instead the wallet is built on first real use.
-//
-// The type is `unknown` here because we lazy-import @bsv/simple/server and
-// don't want to drag its types into modules that never use the real path.
-let walletPromise: Promise<unknown> | null = null;
 
-async function getWallet(): Promise<{
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createToken: (input: { data: unknown; basket: string; satoshis: number }) => Promise<any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  listTokenDetails: (basket: string) => Promise<any[]>;
-}> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let walletPromise: Promise<any> | null = null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getWallet(): Promise<any> {
   if (!walletPromise) {
     walletPromise = (async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,11 +97,10 @@ async function getWallet(): Promise<{
       });
     })();
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return walletPromise as Promise<any>;
+  return walletPromise;
 }
 
-// ── public API ──────────────────────────────────────────────
+// ── public API: ticket minting ──────────────────────────────
 
 export async function mintRegistrationTicket(input: MintInput): Promise<MintResult> {
   if (!env.BSV_ENABLED) {
@@ -104,10 +128,6 @@ export async function mintRegistrationTicket(input: MintInput): Promise<MintResu
       throw new Error("createToken returned no txid");
     }
 
-    // `createToken` doesn't return the vout directly. The convention for
-    // single-output token transactions is vout 0; we resolve the real outpoint
-    // from `listTokenDetails` so any future API change is caught here rather
-    // than silently producing wrong outpoints.
     const outpoint = await resolveOutpoint(wallet, txid);
 
     return { tx_id: txid, outpoint, stub: false };
@@ -118,13 +138,121 @@ export async function mintRegistrationTicket(input: MintInput): Promise<MintResu
 }
 
 /**
- * Optional: list all tickets in our basket. Useful for the admin dashboard
+ * List all tickets in our basket. Useful for the admin dashboard
  * to reconcile failed mints, or to debug from the server console.
  */
 export async function listAllTickets(): Promise<unknown[]> {
   if (!env.BSV_ENABLED) return [];
   const wallet = await getWallet();
   return wallet.listTokenDetails(env.BSV_TICKET_BASKET);
+}
+
+// ── public API: server wallet info + funding ────────────────
+
+/**
+ * Read-only snapshot of the server wallet's state. Used by the admin
+ * dashboard to show identity key, network, balance, and whether BSV mode
+ * is currently enabled.
+ *
+ * Never throws — callers always get a `ServerWalletInfo` object so the
+ * admin UI can render an informative state when BSV is disabled or the
+ * wallet failed to construct.
+ */
+export async function getServerWalletInfo(): Promise<ServerWalletInfo> {
+  if (!env.BSV_ENABLED) {
+    return {
+      enabled: false,
+      identityKey: null,
+      network: null,
+      basket: env.BSV_TICKET_BASKET,
+      totalSatoshis: null,
+      utxoCount: null,
+      status: "disabled",
+    };
+  }
+
+  try {
+    const wallet = await getWallet();
+    const identityKey: string =
+      typeof wallet.getIdentityKey === "function" ? wallet.getIdentityKey() : "";
+    const status =
+      typeof wallet.getStatus === "function" ? String(wallet.getStatus() ?? "ready") : "ready";
+
+    let totalSatoshis: number | null = null;
+    let utxoCount: number | null = null;
+    try {
+      const balance = await wallet.getBalance();
+      // BalanceResult shape is { totalSatoshis, utxoCount } per types.d.ts
+      totalSatoshis = typeof balance?.totalSatoshis === "number" ? balance.totalSatoshis : null;
+      utxoCount = typeof balance?.utxoCount === "number" ? balance.utxoCount : null;
+    } catch {
+      // balance read is best-effort; not all storage backends support it
+    }
+
+    return {
+      enabled: true,
+      identityKey: identityKey || null,
+      network: env.BSV_NETWORK,
+      basket: env.BSV_TICKET_BASKET,
+      totalSatoshis,
+      utxoCount,
+      status,
+    };
+  } catch (err) {
+    return {
+      enabled: true,
+      identityKey: null,
+      network: env.BSV_NETWORK,
+      basket: env.BSV_TICKET_BASKET,
+      totalSatoshis: null,
+      utxoCount: null,
+      status: "error",
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
+ * Generate a BRC-29 payment request that the browser wallet will use to
+ * fund the server wallet. The request contains the server's identity key
+ * and the derivation prefix/suffix the sender must use.
+ */
+export async function createServerPaymentRequest(
+  satoshis: number,
+  memo?: string,
+): Promise<ServerWalletPaymentRequest> {
+  if (!env.BSV_ENABLED) {
+    throw new Error("BSV is disabled — set BSV_ENABLED=true and restart to fund the server wallet");
+  }
+  const wallet = await getWallet();
+  const req = await wallet.createPaymentRequest({ satoshis, memo });
+  return {
+    serverIdentityKey: String(req.serverIdentityKey),
+    derivationPrefix: String(req.derivationPrefix),
+    derivationSuffix: String(req.derivationSuffix),
+    satoshis: Number(req.satoshis),
+    memo: req.memo ?? undefined,
+  };
+}
+
+/**
+ * Internalize a payment that a browser wallet just constructed against the
+ * payment request returned by `createServerPaymentRequest`. After this call
+ * the server wallet has spendable UTXOs and can mint real tickets.
+ */
+export async function receiveServerPayment(payment: IncomingPaymentInput): Promise<void> {
+  if (!env.BSV_ENABLED) {
+    throw new Error("BSV is disabled — cannot receive payments");
+  }
+  const wallet = await getWallet();
+  await wallet.receiveDirectPayment({
+    tx: payment.tx,
+    senderIdentityKey: payment.senderIdentityKey,
+    derivationPrefix: payment.derivationPrefix,
+    derivationSuffix: payment.derivationSuffix,
+    outputIndex: payment.outputIndex,
+    description: payment.description ?? "BE on BSV admin funding",
+  });
 }
 
 // ── helpers ─────────────────────────────────────────────────
