@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bsv:generate-key": "tsx scripts/generate-key.ts"
+    "bsv:generate-key": "tsx scripts/generate-key.ts",
+    "bsv:check": "tsx scripts/check-wallet.ts"
   },
   "dependencies": {
     "@be-on-bsv/shared": "*",

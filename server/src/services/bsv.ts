@@ -175,16 +175,39 @@ export async function getServerWalletInfo(): Promise<ServerWalletInfo> {
     const wallet = await getWallet();
     const identityKey: string =
       typeof wallet.getIdentityKey === "function" ? wallet.getIdentityKey() : "";
-    const status =
-      typeof wallet.getStatus === "function" ? String(wallet.getStatus() ?? "ready") : "ready";
 
+    // WalletStatus shape per types.d.ts: { isConnected, identityKey, network }
+    let status = "ready";
+    if (typeof wallet.getStatus === "function") {
+      const s = wallet.getStatus();
+      if (s && typeof s === "object" && "isConnected" in s) {
+        status = s.isConnected ? "connected" : "disconnected";
+      } else if (typeof s === "string") {
+        status = s;
+      }
+    }
+
+    // BalanceResult shape per types.d.ts:
+    //   { totalSatoshis, totalOutputs, spendableSatoshis, spendableOutputs }
+    // We surface SPENDABLE values — the ones that actually let us mint
+    // tickets — under the existing field names so the UI doesn't lie about
+    // what the wallet can do.
     let totalSatoshis: number | null = null;
     let utxoCount: number | null = null;
     try {
       const balance = await wallet.getBalance();
-      // BalanceResult shape is { totalSatoshis, utxoCount } per types.d.ts
-      totalSatoshis = typeof balance?.totalSatoshis === "number" ? balance.totalSatoshis : null;
-      utxoCount = typeof balance?.utxoCount === "number" ? balance.utxoCount : null;
+      totalSatoshis =
+        typeof balance?.spendableSatoshis === "number"
+          ? balance.spendableSatoshis
+          : typeof balance?.totalSatoshis === "number"
+            ? balance.totalSatoshis
+            : null;
+      utxoCount =
+        typeof balance?.spendableOutputs === "number"
+          ? balance.spendableOutputs
+          : typeof balance?.totalOutputs === "number"
+            ? balance.totalOutputs
+            : null;
     } catch {
       // balance read is best-effort; not all storage backends support it
     }
