@@ -50,10 +50,31 @@ export function createApp(): Express {
     // dist/index.js → ../../client/dist
     const clientDist = path.resolve(__dirname, "../../client/dist");
 
-    app.use(express.static(clientDist));
+    // Log the resolved path on boot so prod deploys surface any
+    // CWD/path weirdness immediately instead of making us guess why
+    // /assets/*.css is 404ing.
+    // eslint-disable-next-line no-console
+    console.log(`[be-on-bsv] serving static client from ${clientDist}`);
 
-    // SPA fallback — anything not under /api gets the React app.
-    app.get(/^(?!\/api\/).*/, (_req, res) => {
+    app.use(
+      express.static(clientDist, {
+        // Long-cache immutable hashed assets. index.html + fonts are
+        // served with default (no-cache) headers.
+        maxAge: "1h",
+      }),
+    );
+
+    // SPA catch-all for HTML navigations. Crucially, paths that look
+    // like files (contain a dot) get a proper 404 here instead of the
+    // HTML shell — otherwise express.static's fallthrough would hand
+    // them to this handler and the browser would silently reject a
+    // text/html response for /assets/*.css, /fonts/*.otf, etc., and
+    // the site would render completely unstyled.
+    app.get(/^(?!\/api\/).*/, (req, res) => {
+      if (req.path.includes(".")) {
+        res.status(404).json({ error: "not_found", path: req.path });
+        return;
+      }
       res.sendFile(path.join(clientDist, "index.html"));
     });
   }
