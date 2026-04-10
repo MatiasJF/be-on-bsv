@@ -133,4 +133,22 @@ export const supabase = {
       };
     },
   },
+  auth: {
+    /**
+     * Mock of `supabase.auth.getUser(token)`. Configure per-test with
+     *   setMockResult("auth.getUser", { user: { id, email, app_metadata: { role: "admin" } } });
+     * The mock ignores the token argument — tests that need to differentiate
+     * "valid admin", "valid non-admin", and "invalid" call setMockResult
+     * with the appropriate user shape (or `null` + an error).
+     */
+    async getUser(_token?: string): Promise<SupabaseResult> {
+      mockState.ops.push("auth.getUser");
+      return (
+        mockState.results.get("auth.getUser") ?? {
+          data: { user: null },
+          error: { message: "not configured" },
+        }
+      );
+    },
+  },
 };

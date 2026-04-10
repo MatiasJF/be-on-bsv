@@ -158,41 +158,47 @@ describe("admin routes require a valid bearer token", () => {
   });
 
   it("returns 403 with a valid token but no admin role", async () => {
-    // Sign a JWT with the SAME secret the env loader sees, but with no admin role.
-    const { SignJWT } = await import("jose");
-    const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET!);
-    const token = await new SignJWT({ role: "user", email: "user@example.com" })
-      .setProtectedHeader({ alg: "HS256" })
-      .setSubject("user-123")
-      .setIssuedAt()
-      .setExpirationTime("1h")
-      .sign(secret);
+    // The middleware delegates verification to supabase.auth.getUser; the
+    // mock returns whatever user we configure regardless of token contents.
+    setMockResult("auth.getUser", {
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        app_metadata: { role: "user" },
+        user_metadata: {},
+      },
+    });
 
     const res = await request(app)
       .get("/api/registrations/44444444-4444-4444-4444-444444444444")
-      .set("Authorization", `Bearer ${token}`);
+      .set("Authorization", "Bearer not-an-admin-token");
     expect(res.status).toBe(403);
   });
 
-  it("succeeds with a valid admin JWT", async () => {
+  it("succeeds with a valid admin token", async () => {
+    setMockResult("auth.getUser", {
+      user: {
+        id: "admin-1",
+        email: "admin@example.com",
+        app_metadata: { role: "admin" },
+        user_metadata: {},
+      },
+    });
     setMockResult("registrations.select", []);
-    const { SignJWT } = await import("jose");
-    const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET!);
-    const token = await new SignJWT({
-      app_metadata: { role: "admin" },
-      email: "admin@example.com",
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setSubject("admin-1")
-      .setIssuedAt()
-      .setExpirationTime("1h")
-      .sign(secret);
 
     const res = await request(app)
       .get("/api/registrations/44444444-4444-4444-4444-444444444444")
-      .set("Authorization", `Bearer ${token}`);
+      .set("Authorization", "Bearer fake-admin-token");
     expect(res.status).toBe(200);
     expect(res.body.registrations).toEqual([]);
+  });
+
+  it("returns 401 when supabase.auth.getUser rejects the token", async () => {
+    setMockResult("auth.getUser", { user: null }, { message: "invalid JWT" });
+    const res = await request(app)
+      .get("/api/registrations/44444444-4444-4444-4444-444444444444")
+      .set("Authorization", "Bearer expired-or-bogus");
+    expect(res.status).toBe(401);
   });
 });
 
