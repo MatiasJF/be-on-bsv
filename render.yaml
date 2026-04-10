@@ -45,6 +45,20 @@ services:
       - key: NODE_ENV
         value: production
 
+      # Forces npm install to include devDependencies even when
+      # NODE_ENV=production. Needed because typescript, @types/*,
+      # vite, tailwindcss etc. are devDependencies but required at
+      # build time. Render-documented pattern. Belt-and-suspenders
+      # alongside the --include=dev flag in buildCommand.
+      #
+      # NOTE: if you're editing this on an EXISTING Blueprint-created
+      # service, changes here don't propagate automatically — you must
+      # also set NPM_CONFIG_PRODUCTION=false in the service's
+      # Environment tab in the Render dashboard, OR sync the Blueprint
+      # manually.
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+
       # PUBLIC_APP_URL is read by the server for confirmation links
       # in emails and QR codes. Set this in the dashboard AFTER the
       # first deploy when you know the assigned *.onrender.com URL.
