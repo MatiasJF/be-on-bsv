@@ -10,6 +10,9 @@ interface AdminEventFormProps {
   mode: "create" | "edit";
 }
 
+/** Keep in sync with the server-side multer limit in routes/events.ts. */
+const MAX_COVER_BYTES = 10 * 1024 * 1024; // 10 MB
+
 const empty: EventInput = {
   title: "",
   description: "",
@@ -30,6 +33,7 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
   const [form, setForm] = useState<EventInput>(empty);
   const [tagsInput, setTagsInput] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,8 +61,27 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function onCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setCoverError(null);
+    if (!file) {
+      setCoverFile(null);
+      return;
+    }
+    if (file.size > MAX_COVER_BYTES) {
+      setCoverError(
+        `"${file.name}" is ${formatBytes(file.size)} — the cover image limit is ${formatBytes(MAX_COVER_BYTES)}.`,
+      );
+      setCoverFile(null);
+      e.target.value = "";
+      return;
+    }
+    setCoverFile(file);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (coverError) return; // pre-empt: don't submit if the picked file was rejected
     setBusy(true);
     setError(null);
     const payload: EventInput = {
@@ -167,14 +190,20 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
             />
           </Field>
 
-          <Field label="Cover image">
+          <Field label={`Cover image (max ${formatBytes(MAX_COVER_BYTES)})`}>
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+              onChange={onCoverChange}
               className="text-white/80 font-body text-sm file:mr-4 file:px-4 file:py-2 file:rounded-full file:border-0 file:bg-bsva-blue file:text-white file:font-display file:font-semibold"
             />
-            {form.cover_url && !coverFile && (
+            {coverFile && !coverError && (
+              <div className="text-xs text-bsva-cyan font-body mt-2">
+                Selected: {coverFile.name} ({formatBytes(coverFile.size)})
+              </div>
+            )}
+            {coverError && <ErrorBanner>{coverError}</ErrorBanner>}
+            {form.cover_url && !coverFile && !coverError && (
               <div className="text-xs text-white/50 font-body mt-2">
                 Current: <span className="text-bsva-cyan">{form.cover_url}</span>
               </div>
@@ -209,10 +238,10 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
             />
           </Field>
 
-          {error && <div className="text-red-300 font-body text-sm">{error}</div>}
+          {error && <ErrorBanner>{error}</ErrorBanner>}
 
           <div className="flex gap-3 pt-2">
-            <Button type="submit" variant="primary" disabled={busy}>
+            <Button type="submit" variant="primary" disabled={busy || !!coverError}>
               {busy ? "Saving…" : mode === "create" ? "Create event" : "Save changes"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => navigate("/admin")}>
@@ -256,4 +285,22 @@ function toLocalInput(iso: string): string {
 
 function fromLocalInput(local: string): string {
   return new Date(local).toISOString();
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function ErrorBanner({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      role="alert"
+      className="mt-2 flex items-start gap-2 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200 font-body"
+    >
+      <span className="font-display font-semibold text-red-300 leading-5">!</span>
+      <div className="flex-1 leading-5">{children}</div>
+    </div>
+  );
 }
