@@ -1,5 +1,16 @@
-import "dotenv/config";
+import { config as loadDotenv } from "dotenv";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
+
+// Load .env from the monorepo root, regardless of where the server was
+// invoked from (npm --workspace server run dev sets CWD to server/, but the
+// .env we care about lives at the repo root).
+//
+//   dev:  server/src/env.ts → ../../.env
+//   prod: server/dist/env.js → ../../.env
+const __dirname = dirname(fileURLToPath(import.meta.url));
+loadDotenv({ path: resolve(__dirname, "../../.env") });
 
 /**
  * Single source of truth for server environment variables.
