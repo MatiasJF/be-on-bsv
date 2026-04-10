@@ -107,6 +107,9 @@ All under `/api`. Admin routes require a Supabase access token via `Authorizatio
 | `POST` | `/api/register` | public | Register for an event. Mints PushDrop ticket, sends confirmation email. |
 | `GET` | `/api/registrations/:eventId` | admin | List registrants for one event. |
 | `GET` | `/api/export/:eventId` | admin | Streamed CSV: Name, Email, Organization, Timestamp, Event Name, TxID. |
+| `GET` | `/api/admin/wallet/info` | admin | Snapshot of the server wallet (identity key, network, basket, balance, status). Returns informative state when BSV is disabled — never throws. |
+| `GET` | `/api/admin/wallet/funding-request?satoshis=N&memo=...` | admin | Step 1 of the BRC-29 browser → server funding flow. Returns a `PaymentRequest` carrying server identity key + derivation prefix/suffix. |
+| `POST` | `/api/admin/wallet/funding-request` | admin | Step 3 of the funding flow. Body: `{ tx, senderIdentityKey, derivationPrefix, derivationSuffix, outputIndex }`. Internalizes the tx via `wallet.receiveDirectPayment` so the server has spendable UTXOs. |
 
 Past/upcoming is derived from `events.starts_at` vs `now()` — no cron job required.
 
@@ -295,16 +298,68 @@ await wallet.redeemToken({ basket: "be-on-bsv-tickets", outpoint });
 ### Implementation skeleton
 `server/src/services/bsv.ts` exposes:
 ```ts
+// Ticket minting
 export async function mintRegistrationTicket(input: {
   eventId: string;
   registrationId: string;
 }): Promise<{ tx_id: string; outpoint: string; stub: boolean }>;
 
 export async function listAllTickets(): Promise<unknown[]>;
+
+// Wallet ops (used by /api/admin/wallet/* and the admin dashboard's WalletPanel)
+export async function getServerWalletInfo(): Promise<ServerWalletInfo>;
+export async function createServerPaymentRequest(satoshis: number, memo?: string): Promise<ServerWalletPaymentRequest>;
+export async function receiveServerPayment(payment: IncomingPaymentInput): Promise<void>;
 ```
 - Lazy-imports `@bsv/simple/server` and constructs `ServerWallet` only on first real call. Cached as a module-level singleton afterwards.
-- If `BSV_ENABLED !== 'true'`, returns a deterministic stub `{ tx_id: 'stub-…', outpoint: '…', stub: true }` so local dev works with no keys.
-- Errors are caught at the route layer and logged but **do not fail the registration** — the row is still inserted; `tx_id` is left null and the email goes out without a verifiable ticket. The admin dashboard surfaces failed mints.
+- If `BSV_ENABLED !== 'true'`, `mintRegistrationTicket` returns a deterministic stub `{ tx_id: 'stub-…', outpoint: '…', stub: true }` so local dev works with no keys. `getServerWalletInfo` returns `{ enabled: false, status: "disabled", … }` instead of throwing. The other wallet ops throw immediately when disabled.
+- Errors from `mintRegistrationTicket` are caught at the route layer and logged but **do not fail the registration** — the row is still inserted; `tx_id` is left null and the email goes out without a verifiable ticket. The admin dashboard surfaces failed mints.
+
+### Funding the server wallet (browser → server, BRC-29 direct payment)
+
+`@bsv/simple/server` and `@bsv/simple/browser` ship a matched pair of methods (`createPaymentRequest` / `fundServerWallet` / `receiveDirectPayment`) that implement the BRC-29 derivation scheme end-to-end. The admin dashboard exposes this as a one-click flow:
+
+```
+┌─ admin dashboard ─────┐                    ┌─ /api/admin/wallet/* ─┐                  ┌─ ServerWallet ─┐
+│                       │                    │                       │                  │                │
+│  WalletPanel.tsx      │  GET ?action=req   │  routes/admin.ts      │   createPayment- │  services/     │
+│                       │ ─────────────────▶ │                       │ ──Request()────▶ │  bsv.ts        │
+│                       │                    │                       │                  │                │
+│                       │ ◀── PaymentRequest │                       │ ◀── PaymentReq   │                │
+│                       │                    │                       │                  │                │
+│  wallet.fund-         │                    │                       │                  │                │
+│  ServerWallet(req,    │                    │                       │                  │                │
+│  basket)              │                    │                       │                  │                │
+│                       │                    │                       │                  │                │
+│                       │  POST { tx, … }    │                       │   receiveDirect- │                │
+│                       │ ─────────────────▶ │                       │ ──Payment()────▶ │                │
+│                       │                    │                       │                  │                │
+└───────────────────────┘                    └───────────────────────┘                  └────────────────┘
+```
+
+The browser wallet (Babbage MetaNet Desktop, etc.) builds + signs the funding tx locally, then we hand the bytes back to the server which calls `wallet.receiveDirectPayment` to internalize them. After this the server has spendable UTXOs and can mint real PushDrop tickets.
+
+### Activating live BSV mode (one-time setup)
+
+For local dev with `BSV_ENABLED=true`:
+
+1. **Generate a server wallet private key:**
+   ```bash
+   npm --workspace server run bsv:generate-key
+   ```
+   This prints a fresh WIF with copy-paste-ready instructions.
+
+2. **Paste the WIF into `.env` at the repo root** as `BSV_SERVER_PRIVATE_KEY`, then set `BSV_ENABLED=true`. Restart the dev server.
+
+3. **Open the admin dashboard.** The "Server wallet" card now shows the wallet's identity key, network, and (initially zero) balance. The "Fund from your browser wallet" card shows a Connect button.
+
+4. **Connect a BSV browser wallet** that supports `@bsv/simple/browser`'s `createWallet()` (Babbage MetaNet Desktop is the canonical option, https://projectbabbage.com/desktop).
+
+5. **Send a small amount** (a few thousand sats is enough for many tickets at 1 sat each). The browser wallet prompts for confirmation, broadcasts the funding tx, and posts the bytes back to the server. The "Server wallet" panel auto-refreshes — you should see the new balance within ~1-2s.
+
+6. **Trigger a registration** from the public site. The resulting `tx_id` will be a real txid (no `stub-` prefix) and `services/bsv.ts` will use `wallet.createToken` to put a real PushDrop ticket on-chain.
+
+> **Operational note for production:** the wallet-toolbox storage backend at `https://storage.babbage.systems` is the default and is shared. If you want a private storage backend, override `BSV_STORAGE_URL`. The wallet's UTXOs and basket state live there — losing access to that backend means losing access to the wallet's funds, regardless of whether you still have the WIF.
 
 ### MCP note
 There is an `@bsv/simple-mcp` server that exposes BSV tooling to Claude as MCP tools. Install:
