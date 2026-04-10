@@ -6,6 +6,7 @@ import { api, ApiError } from "../lib/api.js";
 import { getSupabase } from "../lib/supabase.js";
 import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
+import { WalletPanel } from "../components/WalletPanel.js";
 import { formatEventDateTime } from "../lib/format.js";
 
 export function AdminDashboard() {
@@ -81,6 +82,8 @@ export function AdminDashboard() {
           {error}
         </GlassCard>
       )}
+
+      <WalletPanel />
 
       <GlassCard>
         <div className="divide-y divide-white/10">
