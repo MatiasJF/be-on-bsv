@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import type { Event, RegistrationInput, RegistrationResponse } from "@be-on-bsv/shared";
+import type {
+  Event,
+  EventSpeaker,
+  RegistrationInput,
+  RegistrationResponse,
+} from "@be-on-bsv/shared";
 import { api, ApiError } from "../lib/api.js";
 import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
@@ -119,30 +124,43 @@ export function EventDetail() {
             </p>
           </div>
 
-          {event.host_name && (
+          {event.speakers.length > 0 && (
             <GlassCard className="p-6 mb-6">
-              <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-3">
-                Hosted by
+              <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-4">
+                {speakersHeading(event.speakers)}
               </div>
-              <div className="flex items-start gap-4">
-                {event.host_avatar && (
-                  <img
-                    src={event.host_avatar}
-                    alt=""
-                    className="w-14 h-14 rounded-full object-cover border border-white/10"
-                  />
-                )}
-                <div>
-                  <div className="font-display font-semibold text-white text-lg">
-                    {event.host_name}
-                  </div>
-                  {event.host_bio && (
-                    <div className="text-white/70 font-body text-sm mt-1">
-                      {event.host_bio}
+              <ul className="space-y-5">
+                {event.speakers.map((s, i) => (
+                  <li key={s.id ?? `${s.name}-${i}`} className="flex items-start gap-4">
+                    {s.avatar_url ? (
+                      <img
+                        src={s.avatar_url}
+                        alt=""
+                        className="w-14 h-14 rounded-full object-cover border border-white/10 flex-none"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-bsva-blue/20 border border-white/10 flex-none flex items-center justify-center font-display font-semibold text-bsva-cyan">
+                        {s.name.slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-display font-semibold text-white text-lg leading-tight">
+                        {s.name}
+                      </div>
+                      {s.role && s.role !== "speaker" && (
+                        <div className="text-bsva-cyan text-xs font-display font-semibold uppercase tracking-wider mt-0.5">
+                          {s.role}
+                        </div>
+                      )}
+                      {s.bio && (
+                        <div className="text-white/70 font-body text-sm mt-1.5 leading-relaxed">
+                          {s.bio}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </li>
+                ))}
+              </ul>
             </GlassCard>
           )}
         </div>
@@ -218,6 +236,14 @@ interface FieldProps {
   type?: string;
   required?: boolean;
   autoComplete?: string;
+}
+
+function speakersHeading(list: EventSpeaker[]): string {
+  // "Hosted by" when there's exactly one host, otherwise "Speakers".
+  if (list.length === 1 && list[0]!.role === "host") return "Hosted by";
+  const allHost = list.every((s) => s.role === "host");
+  if (allHost) return "Hosted by";
+  return "Speakers";
 }
 
 function Field({ label, value, onChange, type = "text", required, autoComplete }: FieldProps) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import type { EventInput } from "@be-on-bsv/shared";
+import type { EventInput, EventSpeaker } from "@be-on-bsv/shared";
 import { api, ApiError } from "../lib/api.js";
 import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
@@ -13,6 +13,14 @@ interface AdminEventFormProps {
 /** Keep in sync with the server-side multer limit in routes/events.ts. */
 const MAX_COVER_BYTES = 10 * 1024 * 1024; // 10 MB
 
+const emptySpeaker = (position: number): EventSpeaker => ({
+  name: "",
+  bio: null,
+  avatar_url: null,
+  role: position === 0 ? "host" : "speaker",
+  position,
+});
+
 const empty: EventInput = {
   title: "",
   description: "",
@@ -22,15 +30,14 @@ const empty: EventInput = {
   is_virtual: true,
   cover_url: null,
   tags: [],
-  host_name: "",
-  host_bio: "",
-  host_avatar: null,
+  speakers: [],
 };
 
 export function AdminEventForm({ mode }: AdminEventFormProps) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState<EventInput>(empty);
+  const [speakers, setSpeakers] = useState<EventSpeaker[]>([]);
   const [tagsInput, setTagsInput] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
@@ -49,10 +56,9 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
         is_virtual: r.event.is_virtual,
         cover_url: r.event.cover_url ?? null,
         tags: r.event.tags,
-        host_name: r.event.host_name ?? "",
-        host_bio: r.event.host_bio ?? "",
-        host_avatar: r.event.host_avatar ?? null,
+        speakers: r.event.speakers,
       });
+      setSpeakers(r.event.speakers);
       setTagsInput(r.event.tags.join(", "));
     });
   }, [mode, id]);
@@ -81,13 +87,29 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (coverError) return; // pre-empt: don't submit if the picked file was rejected
+    if (coverError) return;
     setBusy(true);
     setError(null);
+
+    // Filter out speakers rows that were left blank (name is required),
+    // and normalize positions to the array index.
+    const cleanSpeakers: EventSpeaker[] = speakers
+      .filter((s) => s.name.trim().length > 0)
+      .map((s, i) => ({
+        ...s,
+        name: s.name.trim(),
+        bio: s.bio ? s.bio.toString().trim() || null : null,
+        avatar_url: s.avatar_url || null,
+        role: s.role || "speaker",
+        position: i,
+      }));
+
     const payload: EventInput = {
       ...form,
       tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
+      speakers: cleanSpeakers,
     };
+
     try {
       if (mode === "create") {
         await api.admin.createEvent(payload, coverFile ?? undefined);
@@ -102,7 +124,6 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
     }
   }
 
-  // Convert ISO → datetime-local format for the input
   const startsLocal = form.starts_at ? toLocalInput(form.starts_at) : "";
 
   return (
@@ -210,33 +231,7 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
             )}
           </Field>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Host name">
-              <input
-                type="text"
-                value={form.host_name ?? ""}
-                onChange={(e) => update("host_name", e.target.value)}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Host avatar URL">
-              <input
-                type="url"
-                value={form.host_avatar ?? ""}
-                onChange={(e) => update("host_avatar", e.target.value || null)}
-                className={inputCls}
-              />
-            </Field>
-          </div>
-
-          <Field label="Host bio">
-            <textarea
-              value={form.host_bio ?? ""}
-              onChange={(e) => update("host_bio", e.target.value)}
-              rows={3}
-              className={inputCls}
-            />
-          </Field>
+          <SpeakersEditor speakers={speakers} setSpeakers={setSpeakers} />
 
           {error && <ErrorBanner>{error}</ErrorBanner>}
 
@@ -253,6 +248,169 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
     </motion.div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────
+// Speakers editor — add/edit/remove + reorder via up/down buttons
+// ─────────────────────────────────────────────────────────────
+
+function SpeakersEditor({
+  speakers,
+  setSpeakers,
+}: {
+  speakers: EventSpeaker[];
+  setSpeakers: (list: EventSpeaker[]) => void;
+}) {
+  function updateRow(index: number, patch: Partial<EventSpeaker>) {
+    setSpeakers(speakers.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  }
+  function removeRow(index: number) {
+    setSpeakers(speakers.filter((_, i) => i !== index));
+  }
+  function moveRow(index: number, direction: -1 | 1) {
+    const next = [...speakers];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    setSpeakers(next);
+  }
+  function addRow() {
+    setSpeakers([...speakers, emptySpeaker(speakers.length)]);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="block text-xs font-body text-white/60">
+          Speakers ({speakers.length}/10)
+        </span>
+        <button
+          type="button"
+          onClick={addRow}
+          disabled={speakers.length >= 10}
+          className="text-xs text-bsva-cyan hover:text-white font-display font-semibold disabled:opacity-40"
+        >
+          + Add speaker
+        </button>
+      </div>
+
+      {speakers.length === 0 && (
+        <div className="text-sm text-white/40 font-body italic">
+          No speakers yet. Click <span className="text-bsva-cyan">+ Add speaker</span> to add a host or panelist.
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {speakers.map((s, i) => (
+          <div
+            key={s.id ?? `new-${i}`}
+            className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-display font-semibold text-bsva-cyan uppercase tracking-wider">
+                  #{i + 1}
+                </span>
+                <select
+                  value={s.role}
+                  onChange={(e) => updateRow(i, { role: e.target.value })}
+                  className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs font-body text-white focus:outline-none focus:border-bsva-cyan"
+                >
+                  <option value="host">host</option>
+                  <option value="speaker">speaker</option>
+                  <option value="panelist">panelist</option>
+                  <option value="moderator">moderator</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <IconButton
+                  title="Move up"
+                  disabled={i === 0}
+                  onClick={() => moveRow(i, -1)}
+                >
+                  ↑
+                </IconButton>
+                <IconButton
+                  title="Move down"
+                  disabled={i === speakers.length - 1}
+                  onClick={() => moveRow(i, 1)}
+                >
+                  ↓
+                </IconButton>
+                <IconButton title="Remove" onClick={() => removeRow(i)} danger>
+                  ×
+                </IconButton>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3 mb-3">
+              <Field label="Name" required>
+                <input
+                  type="text"
+                  value={s.name}
+                  onChange={(e) => updateRow(i, { name: e.target.value })}
+                  required
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Avatar URL">
+                <input
+                  type="url"
+                  value={s.avatar_url ?? ""}
+                  onChange={(e) => updateRow(i, { avatar_url: e.target.value || null })}
+                  placeholder="https://…"
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+
+            <Field label="Bio">
+              <textarea
+                value={s.bio ?? ""}
+                onChange={(e) => updateRow(i, { bio: e.target.value })}
+                rows={2}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function IconButton({
+  onClick,
+  children,
+  title,
+  disabled,
+  danger,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  title: string;
+  disabled?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className={`w-7 h-7 rounded-md border font-display font-semibold text-sm transition-colors ${
+        danger
+          ? "border-red-400/30 text-red-300 hover:bg-red-500/10 disabled:opacity-40"
+          : "border-white/10 text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-40"
+      } disabled:cursor-not-allowed`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Shared style + utility helpers
+// ─────────────────────────────────────────────────────────────
 
 const inputCls =
   "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white font-body placeholder:text-white/30 focus:outline-none focus:border-bsva-cyan focus:bg-white/10 transition-colors";
@@ -278,7 +436,6 @@ function Field({
 
 function toLocalInput(iso: string): string {
   const d = new Date(iso);
-  // YYYY-MM-DDTHH:mm — strip seconds and timezone
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
