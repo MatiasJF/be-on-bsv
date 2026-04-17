@@ -447,12 +447,11 @@ npm run db:reset               # applies database/*.sql to local Supabase / host
 
 ## 10. Open items / known gaps
 
-- [ ] BSV server wallet funding strategy — for v1 the server key needs a tiny UTXO balance to mint tickets. Document funding flow once the wallet keypair is generated.
-- [ ] Decide whether the confirmation page should be public-link-by-id or require the email of the registrant.
-- [ ] Calendar view: design only the month grid for v1; week view is backlog.
-- [ ] Speakers: v1 stores host info as flat fields on `events`. If we need multiple speakers per event, promote to a `speakers` table + join.
-- [ ] Build Easy logo / wordmark: there is no separate Build Easy mark — the page wordmark is set in Chillax Semibold over the BSVA primary logo. If a real BE-on-BSV mark appears later, add it to §5.
-- [ ] simple-mcp is installed in the user's global Claude config but not visible in the current Claude session. After a Claude Code restart, future sessions can use it for in-context BSV tooling.
+- [x] ~BSV server wallet funding strategy~ — runbook + monitoring/retry shipped in commit `2acd64e`. Closed as GitHub issue #1.
+- [x] ~Confirmation page auth model~ — decided to stay **public-by-id** (matches Luma and most event platforms). Registration UUIDs are unguessable; `/api/register/:id` returns name + event title + tx_id + QR, no email or org. Revisit only if a real PII concern surfaces. Closed as issue #2.
+- [x] ~Calendar week view~ — shipped in commit `124a5d7` (CalendarWeekGrid component). Closed as issue #3.
+- [x] ~Multi-speaker schema~ — shipped in commits `eccd59f` (schema + shared types), `a4c7513` (server routes), `db4576d` (client UI). `database/003_speakers.sql` handles the migration. Closed as issue #4.
+- [ ] Build Easy logo / wordmark — dormant; if/when a real BE-on-BSV wordmark asset appears, add it to §5 and swap the Chillax text for an `<img>` in `Nav.tsx`. Tracked as issue #5.
 
 ---
 
