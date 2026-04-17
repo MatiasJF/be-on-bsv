@@ -361,6 +361,20 @@ For local dev with `BSV_ENABLED=true`:
 
 > **Operational note for production:** the wallet-toolbox storage backend at `https://storage.babbage.systems` is the default and is shared. If you want a private storage backend, override `BSV_STORAGE_URL`. The wallet's UTXOs and basket state live there — losing access to that backend means losing access to the wallet's funds, regardless of whether you still have the WIF.
 
+### Wallet operations (monitoring, top-ups, retries)
+
+**Low-balance warning.** `getServerWalletInfo()` includes `lowBalance: boolean` and `lowBalanceThreshold: number`, computed against `env.BSV_LOW_BALANCE_SATS` (default 100 sats). When the spendable balance is below the threshold, the admin dashboard's left-hand wallet card shows a yellow warning — top up from the right-hand panel before the next registration fails to mint.
+
+**Pending-mint count.** `/api/admin/wallet/info` also returns `pendingMintCount` — the number of `registrations` rows with `tx_id IS NULL`. These are registrations where the mint failed (or was never attempted because BSV mode was disabled at the time). The count shows in the wallet card as an actionable cyan notice.
+
+**Retry a failed mint.** `POST /api/admin/registrations/:id/mint` re-runs `mintRegistrationTicket()` for a specific registration and persists the resulting `tx_id` + `outpoint`. The admin dashboard's per-event registrations table shows a **"Retry mint"** button inline for any row with `tx_id = null`. The endpoint is idempotent: a row that already has a `tx_id` returns 409 rather than double-minting.
+
+**Operational loop when a wallet drains:**
+1. Wallet panel shows `Low balance` warning.
+2. Admin tops up from their browser wallet → server receives funds.
+3. Admin navigates to `/admin/events/<id>/registrations` for any event with "pending mint" rows.
+4. Clicks "Retry mint" on each — each hits `POST /api/admin/registrations/:id/mint` and the row's `tx_id` updates in place on success.
+
 ### MCP note
 There is an `@bsv/simple-mcp` server that exposes BSV tooling to Claude as MCP tools. Install:
 ```bash

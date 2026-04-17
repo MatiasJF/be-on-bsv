@@ -7,12 +7,14 @@ import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
 import { formatEventDateTime } from "../lib/format.js";
 import { getAccessToken } from "../lib/supabase.js";
+import { retryMintForRegistration } from "../lib/wallet.js";
 
 export function AdminRegistrations() {
   const { id } = useParams();
   const [event, setEvent] = useState<Event | null>(null);
   const [regs, setRegs] = useState<Registration[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -23,6 +25,27 @@ export function AdminRegistrations() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "failed"));
   }, [id]);
+
+  async function onRetry(regId: string) {
+    setRetrying(regId);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("not signed in");
+      const ticket = await retryMintForRegistration({ registrationId: regId, authToken: token });
+      // Update the row in place with the new tx_id so the UI reflects success.
+      setRegs((prev) =>
+        prev
+          ? prev.map((r) =>
+              r.id === regId ? { ...r, tx_id: ticket.tx_id, outpoint: ticket.outpoint } : r,
+            )
+          : prev,
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "retry failed");
+    } finally {
+      setRetrying(null);
+    }
+  }
 
   async function downloadCsv() {
     if (!id) return;
@@ -87,6 +110,7 @@ export function AdminRegistrations() {
               <th className="px-4 py-3">Organization</th>
               <th className="px-4 py-3">Registered</th>
               <th className="px-4 py-3">TxID</th>
+              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="text-white/85">
@@ -99,13 +123,26 @@ export function AdminRegistrations() {
                   {new Date(r.created_at).toLocaleString()}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-bsva-cyan/80 truncate max-w-[200px]">
-                  {r.tx_id ?? "—"}
+                  {r.tx_id ?? (
+                    <span className="text-yellow-300 font-body not-italic">pending mint</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {!r.tx_id && (
+                    <button
+                      onClick={() => onRetry(r.id)}
+                      disabled={retrying === r.id}
+                      className="text-xs font-display font-semibold text-bsva-cyan hover:text-white disabled:opacity-50"
+                    >
+                      {retrying === r.id ? "Retrying…" : "Retry mint"}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
             {regs && regs.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center py-10 text-white/60">
+                <td colSpan={6} className="text-center py-10 text-white/60">
                   No registrations yet.
                 </td>
               </tr>

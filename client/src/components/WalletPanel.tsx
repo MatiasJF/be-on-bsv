@@ -25,9 +25,13 @@ import { getAccessToken } from "../lib/supabase.js";
  *   └────────────────────────────────────┘
  */
 export function WalletPanel() {
-  const { info, loading: infoLoading, error: infoError, refresh } = useServerWalletInfo(
-    getAccessToken,
-  );
+  const {
+    info,
+    pendingMintCount,
+    loading: infoLoading,
+    error: infoError,
+    refresh,
+  } = useServerWalletInfo(getAccessToken);
   const { wallet, identityKey, loading: walletLoading, error: walletError, connect } = useWallet();
 
   const [amount, setAmount] = useState<string>("5000");
@@ -114,6 +118,30 @@ export function WalletPanel() {
               )}
             </dd>
           </dl>
+        )}
+
+        {info?.enabled && info.lowBalance && (
+          <div className="mt-5 rounded-lg border border-yellow-400/40 bg-yellow-400/[0.08] p-3 text-sm font-body">
+            <div className="text-yellow-200 font-display font-semibold mb-1">
+              ⚠ Low balance
+            </div>
+            <div className="text-white/70 leading-snug">
+              Spendable balance is below {formatSats(info.lowBalanceThreshold)}. Top up
+              from the panel on the right to keep minting tickets.
+            </div>
+          </div>
+        )}
+
+        {pendingMintCount > 0 && (
+          <div className="mt-3 rounded-lg border border-bsva-cyan/30 bg-bsva-cyan/[0.06] p-3 text-sm font-body">
+            <div className="text-bsva-cyan font-display font-semibold mb-1">
+              {pendingMintCount} registration{pendingMintCount === 1 ? "" : "s"} pending mint
+            </div>
+            <div className="text-white/70 leading-snug">
+              These registrations never got an on-chain ticket. Open the event's registrations
+              list from the dashboard to retry minting.
+            </div>
+          </div>
         )}
 
         {info && !info.enabled && (

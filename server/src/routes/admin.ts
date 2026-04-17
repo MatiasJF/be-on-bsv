@@ -3,23 +3,80 @@ import { z } from "zod";
 import {
   createServerPaymentRequest,
   getServerWalletInfo,
+  mintRegistrationTicket,
   receiveServerPayment,
 } from "../services/bsv.js";
+import { supabase } from "../services/supabase.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { HttpError, asyncHandler } from "../middleware/error.js";
 
 export const adminRouter: Router = Router();
 
 // ── GET /api/admin/wallet/info ───────────────────────────────
-// Snapshot of the server wallet for the admin dashboard. Always returns
-// 200 with a structured payload (even when BSV mode is disabled or the
-// wallet failed to construct) so the UI can render an informative state.
+// Snapshot of the server wallet + operational health counters.
+// Always returns 200 with a structured payload so the admin UI can
+// render an informative state even when BSV mode is disabled or the
+// wallet failed to construct.
 adminRouter.get(
   "/wallet/info",
   requireAdmin,
   asyncHandler(async (_req, res) => {
-    const info = await getServerWalletInfo();
-    res.json({ wallet: info });
+    const [info, pendingMintCount] = await Promise.all([
+      getServerWalletInfo(),
+      countPendingMints(),
+    ]);
+    res.json({ wallet: info, pendingMintCount });
+  }),
+);
+
+async function countPendingMints(): Promise<number> {
+  // Registrations where the BSV mint failed or was never attempted —
+  // these are the ones the admin can retry.
+  const { count, error } = await supabase
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .is("tx_id", null);
+  if (error) return 0; // best-effort; don't fail the whole info call
+  return count ?? 0;
+}
+
+// ── POST /api/admin/registrations/:id/mint ──────────────────
+// Retry minting a PushDrop ticket for a single registration whose
+// previous attempt failed (tx_id is NULL). Idempotent: if the
+// registration already has a tx_id, returns 409 instead of duplicating.
+adminRouter.post(
+  "/registrations/:id/mint",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { data: reg, error } = await supabase
+      .from("registrations")
+      .select("id, event_id, tx_id")
+      .eq("id", req.params.id)
+      .maybeSingle();
+    if (error) throw new HttpError(500, error.message);
+    if (!reg) throw new HttpError(404, "registration_not_found");
+    if (reg.tx_id) throw new HttpError(409, "already_minted");
+
+    let ticket;
+    try {
+      ticket = await mintRegistrationTicket({
+        eventId: reg.event_id,
+        registrationId: reg.id,
+      });
+    } catch (err) {
+      throw new HttpError(
+        503,
+        err instanceof Error ? err.message : "mint failed",
+      );
+    }
+
+    const { error: updErr } = await supabase
+      .from("registrations")
+      .update({ tx_id: ticket.tx_id, outpoint: ticket.outpoint })
+      .eq("id", reg.id);
+    if (updErr) throw new HttpError(500, `persist: ${updErr.message}`);
+
+    res.json({ ticket });
   }),
 );
 

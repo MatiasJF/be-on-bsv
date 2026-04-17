@@ -60,6 +60,10 @@ export interface ServerWalletInfo {
   totalSatoshis: number | null;
   utxoCount: number | null;
   status: string | null;
+  /** True when spendable balance is below BSV_LOW_BALANCE_SATS. */
+  lowBalance: boolean;
+  /** The threshold used for `lowBalance`, for UI display. */
+  lowBalanceThreshold: number;
   error?: string;
 }
 
@@ -168,6 +172,8 @@ export async function getServerWalletInfo(): Promise<ServerWalletInfo> {
       totalSatoshis: null,
       utxoCount: null,
       status: "disabled",
+      lowBalance: false,
+      lowBalanceThreshold: env.BSV_LOW_BALANCE_SATS,
     };
   }
 
@@ -212,6 +218,9 @@ export async function getServerWalletInfo(): Promise<ServerWalletInfo> {
       // balance read is best-effort; not all storage backends support it
     }
 
+    const lowBalance =
+      totalSatoshis !== null && totalSatoshis < env.BSV_LOW_BALANCE_SATS;
+
     return {
       enabled: true,
       identityKey: identityKey || null,
@@ -220,6 +229,8 @@ export async function getServerWalletInfo(): Promise<ServerWalletInfo> {
       totalSatoshis,
       utxoCount,
       status,
+      lowBalance,
+      lowBalanceThreshold: env.BSV_LOW_BALANCE_SATS,
     };
   } catch (err) {
     return {
@@ -230,6 +241,8 @@ export async function getServerWalletInfo(): Promise<ServerWalletInfo> {
       totalSatoshis: null,
       utxoCount: null,
       status: "error",
+      lowBalance: false,
+      lowBalanceThreshold: env.BSV_LOW_BALANCE_SATS,
       error: err instanceof Error ? err.message : String(err),
     };
   }

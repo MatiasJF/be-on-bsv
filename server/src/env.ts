@@ -38,6 +38,12 @@ const EnvSchema = z.object({
   BSV_NETWORK: z.enum(["main", "test"]).default("main"),
   BSV_STORAGE_URL: z.string().url().default("https://storage.babbage.systems"),
   BSV_TICKET_BASKET: z.string().default("be-on-bsv-tickets"),
+  /**
+   * If spendable balance falls below this (in sats), the admin wallet
+   * panel surfaces a warning. Defaults to ~100 tickets' worth — tune
+   * based on your expected registration rate.
+   */
+  BSV_LOW_BALANCE_SATS: z.coerce.number().int().min(0).default(100),
 
   // Email
   RESEND_API_KEY: z.string().optional(),

@@ -174,11 +174,14 @@ export interface ServerWalletInfo {
   totalSatoshis: number | null;
   utxoCount: number | null;
   status: string | null;
+  lowBalance: boolean;
+  lowBalanceThreshold: number;
   error?: string;
 }
 
 export function useServerWalletInfo(authTokenGetter: () => Promise<string | null>) {
   const [info, setInfo] = useState<ServerWalletInfo | null>(null);
+  const [pendingMintCount, setPendingMintCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -195,8 +198,12 @@ export function useServerWalletInfo(authTokenGetter: () => Promise<string | null
         const body = await safeJson(res);
         throw new Error(body?.error ?? res.statusText);
       }
-      const data = (await res.json()) as { wallet: ServerWalletInfo };
+      const data = (await res.json()) as {
+        wallet: ServerWalletInfo;
+        pendingMintCount?: number;
+      };
       setInfo(data.wallet);
+      setPendingMintCount(data.pendingMintCount ?? 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load wallet info");
     } finally {
@@ -208,5 +215,22 @@ export function useServerWalletInfo(authTokenGetter: () => Promise<string | null
     void refresh();
   }, [refresh]);
 
-  return { info, loading, error, refresh };
+  return { info, pendingMintCount, loading, error, refresh };
+}
+
+/** Retry minting a PushDrop ticket for a registration whose previous attempt failed. */
+export async function retryMintForRegistration(input: {
+  registrationId: string;
+  authToken: string;
+}): Promise<{ tx_id: string; outpoint: string; stub: boolean }> {
+  const res = await fetch(`/api/admin/registrations/${input.registrationId}/mint`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${input.authToken}` },
+  });
+  if (!res.ok) {
+    const body = await safeJson(res);
+    throw new Error(body?.error ?? res.statusText);
+  }
+  const data = (await res.json()) as { ticket: { tx_id: string; outpoint: string; stub: boolean } };
+  return data.ticket;
 }
