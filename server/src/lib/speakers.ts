@@ -40,6 +40,28 @@ export const EVENTS_WITH_SPEAKERS_SELECT =
   "*, event_speakers(role, position, speakers(id, name, bio, avatar_url))";
 
 /**
+ * Postgrest error codes that indicate the speakers/event_speakers table
+ * hasn't been created yet (003_speakers.sql wasn't applied). Used to
+ * gracefully fall back to a speakers-less query during the brief window
+ * between deploying the new code and running the migration.
+ */
+const MISSING_TABLE_CODES = new Set([
+  "PGRST205", // "Could not find the table in the schema cache"
+  "42P01",    // Postgres "undefined_table"
+]);
+
+export function isMissingSpeakersTable(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: unknown }).code;
+  const message = (err as { message?: unknown }).message;
+  if (typeof code === "string" && MISSING_TABLE_CODES.has(code)) return true;
+  if (typeof message === "string" && /event_speakers|speakers/.test(message)) {
+    if (/schema cache|does not exist/i.test(message)) return true;
+  }
+  return false;
+}
+
+/**
  * Convert the nested Supabase shape into the flat `speakers[]` the
  * API returns. Preserves the original event columns; deletes the
  * nested `event_speakers` key.
@@ -99,7 +121,13 @@ export async function syncEventSpeakers(
     .from("event_speakers")
     .delete()
     .eq("event_id", eventId);
-  if (delErr) throw new HttpError(500, `speakers unlink: ${delErr.message}`);
+  if (delErr) {
+    // Bubble up with the original code intact so callers can detect
+    // missing-table errors via isMissingSpeakersTable().
+    const err = new HttpError(500, `speakers unlink: ${delErr.message}`);
+    (err as unknown as { code?: string }).code = delErr.code;
+    throw err;
+  }
 
   if (speakers.length === 0) return;
 

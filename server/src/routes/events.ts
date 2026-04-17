@@ -10,6 +10,7 @@ import { HttpError, asyncHandler } from "../middleware/error.js";
 import {
   EVENTS_WITH_SPEAKERS_SELECT,
   flattenEventSpeakers,
+  isMissingSpeakersTable,
   syncEventSpeakers,
 } from "../lib/speakers.js";
 
@@ -27,28 +28,42 @@ eventsRouter.get(
     const query = EventListQuerySchema.parse(req.query);
     const nowIso = new Date().toISOString();
 
-    let q = supabase
-      .from("events")
-      .select(EVENTS_WITH_SPEAKERS_SELECT)
-      .is("deleted_at", null)
-      .range(query.offset, query.offset + query.limit - 1);
+    // Build a query factory so we can retry without duplicating the
+    // filter chain if the speakers-join fails (migration 003 not applied).
+    const buildQuery = (selectCols: string) => {
+      let q = supabase
+        .from("events")
+        .select(selectCols)
+        .is("deleted_at", null)
+        .range(query.offset, query.offset + query.limit - 1);
+      if (query.status === "upcoming") {
+        q = q.gte("starts_at", nowIso).order("starts_at", { ascending: true });
+      } else if (query.status === "past") {
+        q = q.lt("starts_at", nowIso).order("starts_at", { ascending: false });
+      } else {
+        q = q.order("starts_at", { ascending: false });
+      }
+      if (query.tag) {
+        q = q.contains("tags", [query.tag]);
+      }
+      return q;
+    };
 
-    if (query.status === "upcoming") {
-      q = q.gte("starts_at", nowIso).order("starts_at", { ascending: true });
-    } else if (query.status === "past") {
-      q = q.lt("starts_at", nowIso).order("starts_at", { ascending: false });
-    } else {
-      q = q.order("starts_at", { ascending: false });
+    let { data, error } = await buildQuery(EVENTS_WITH_SPEAKERS_SELECT);
+    if (error && isMissingSpeakersTable(error)) {
+      // 003_speakers.sql hasn't been applied yet. Fall back to the
+      // pre-migration shape; flattenEventSpeakers will synthesize a
+      // single speaker from host_* on each row.
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[events] speakers join failed (migration 003 not applied?). Falling back to plain select.",
+      );
+      ({ data, error } = await buildQuery("*"));
     }
-
-    if (query.tag) {
-      q = q.contains("tags", [query.tag]);
-    }
-
-    const { data, error } = await q;
     if (error) throw new HttpError(500, error.message);
+
     const events = (data ?? []).map((row) =>
-      flattenEventSpeakers(row as Record<string, unknown>),
+      flattenEventSpeakers(row as unknown as Record<string, unknown>),
     );
     res.json({ events });
   }),
@@ -58,16 +73,25 @@ eventsRouter.get(
 eventsRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("events")
       .select(EVENTS_WITH_SPEAKERS_SELECT)
       .eq("id", req.params.id)
       .is("deleted_at", null)
       .maybeSingle();
 
+    if (error && isMissingSpeakersTable(error)) {
+      ({ data, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", req.params.id)
+        .is("deleted_at", null)
+        .maybeSingle());
+    }
+
     if (error) throw new HttpError(500, error.message);
     if (!data) throw new HttpError(404, "event_not_found");
-    res.json({ event: flattenEventSpeakers(data as Record<string, unknown>) });
+    res.json({ event: flattenEventSpeakers(data as unknown as Record<string, unknown>) });
   }),
 );
 
@@ -97,30 +121,45 @@ eventsRouter.post(
 
     // Sync speakers if provided. Backward-compat: if the caller is an
     // older client that still sends host_name, synthesize one speaker
-    // so the new-model pages show it.
-    if (speakers !== undefined) {
-      await syncEventSpeakers(created.id, speakers);
-    } else if (eventFields.host_name && eventFields.host_name.trim().length > 0) {
-      await syncEventSpeakers(created.id, [
-        {
-          name: eventFields.host_name.trim(),
-          bio: eventFields.host_bio ?? null,
-          avatar_url: eventFields.host_avatar ?? null,
-          role: "host",
-          position: 0,
-        },
-      ]);
+    // so the new-model pages show it. Silently skipped if the migration
+    // isn't applied yet (speakers tables missing) — the event row was
+    // still inserted successfully.
+    try {
+      if (speakers !== undefined) {
+        await syncEventSpeakers(created.id, speakers);
+      } else if (eventFields.host_name && eventFields.host_name.trim().length > 0) {
+        await syncEventSpeakers(created.id, [
+          {
+            name: eventFields.host_name.trim(),
+            bio: eventFields.host_bio ?? null,
+            avatar_url: eventFields.host_avatar ?? null,
+            role: "host",
+            position: 0,
+          },
+        ]);
+      }
+    } catch (err) {
+      if (!isMissingSpeakersTable(err)) throw err;
+      // eslint-disable-next-line no-console
+      console.warn("[events] skipping speakers sync — migration 003 not applied");
     }
 
     // Re-read the event with speakers so the client gets the final shape.
-    const { data: full, error: readErr } = await supabase
+    let { data: full, error: readErr } = await supabase
       .from("events")
       .select(EVENTS_WITH_SPEAKERS_SELECT)
       .eq("id", created.id)
       .maybeSingle();
+    if (readErr && isMissingSpeakersTable(readErr)) {
+      ({ data: full, error: readErr } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", created.id)
+        .maybeSingle());
+    }
     if (readErr || !full) throw new HttpError(500, readErr?.message ?? "reread failed");
 
-    res.status(201).json({ event: flattenEventSpeakers(full as Record<string, unknown>) });
+    res.status(201).json({ event: flattenEventSpeakers(full as unknown as Record<string, unknown>) });
   }),
 );
 
@@ -152,19 +191,33 @@ eventsRouter.put(
 
     // Sync speakers only when the caller provided the array explicitly.
     // Partial-update semantics: omitting `speakers` leaves existing
-    // event_speakers rows untouched.
+    // event_speakers rows untouched. Migration-missing errors are
+    // treated as "nothing to sync" rather than failing the whole update.
     if (speakers !== undefined) {
-      await syncEventSpeakers(updated.id, speakers);
+      try {
+        await syncEventSpeakers(updated.id, speakers);
+      } catch (err) {
+        if (!isMissingSpeakersTable(err)) throw err;
+        // eslint-disable-next-line no-console
+        console.warn("[events] skipping speakers sync — migration 003 not applied");
+      }
     }
 
-    const { data: full, error: readErr } = await supabase
+    let { data: full, error: readErr } = await supabase
       .from("events")
       .select(EVENTS_WITH_SPEAKERS_SELECT)
       .eq("id", updated.id)
       .maybeSingle();
+    if (readErr && isMissingSpeakersTable(readErr)) {
+      ({ data: full, error: readErr } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", updated.id)
+        .maybeSingle());
+    }
     if (readErr || !full) throw new HttpError(500, readErr?.message ?? "reread failed");
 
-    res.json({ event: flattenEventSpeakers(full as Record<string, unknown>) });
+    res.json({ event: flattenEventSpeakers(full as unknown as Record<string, unknown>) });
   }),
 );
 
