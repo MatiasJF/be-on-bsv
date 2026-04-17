@@ -3,14 +3,14 @@ import { motion } from "framer-motion";
 import type { Event } from "@be-on-bsv/shared";
 import { api, ApiError } from "../lib/api.js";
 import { EventCard } from "../components/EventCard.js";
-import { CalendarGrid } from "../components/CalendarGrid.js";
+import { CalendarMonthGrid, CalendarWeekGrid } from "../components/CalendarGrid.js";
 import { Button } from "../components/Button.js";
 import { GlassCard } from "../components/GlassCard.js";
 
 export function Home() {
   const [events, setEvents] = useState<Event[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<"cards" | "calendar">("cards");
+  const [view, setView] = useState<"cards" | "month" | "week">("cards");
 
   useEffect(() => {
     api.events
@@ -71,22 +71,19 @@ export function Home() {
             </p>
           </div>
           <div className="inline-flex glass rounded-full p-1">
-            <button
-              onClick={() => setView("cards")}
-              className={`px-4 py-2 rounded-full text-sm font-display font-semibold transition-all ${
-                view === "cards" ? "bg-bsva-blue text-white shadow-blue-glow" : "text-white/70"
-              }`}
-            >
-              Cards
-            </button>
-            <button
-              onClick={() => setView("calendar")}
-              className={`px-4 py-2 rounded-full text-sm font-display font-semibold transition-all ${
-                view === "calendar" ? "bg-bsva-blue text-white shadow-blue-glow" : "text-white/70"
-              }`}
-            >
-              Calendar
-            </button>
+            {(["cards", "month", "week"] as const).map((opt) => (
+              <button
+                key={opt}
+                onClick={() => setView(opt)}
+                className={`px-4 py-2 rounded-full text-sm font-display font-semibold capitalize transition-all ${
+                  view === opt
+                    ? "bg-bsva-blue text-white shadow-blue-glow"
+                    : "text-white/70"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -118,8 +115,12 @@ export function Home() {
           </div>
         )}
 
-        {events && events.length > 0 && view === "calendar" && (
-          <CalendarGrid events={events} />
+        {events && events.length > 0 && view === "month" && (
+          <CalendarMonthGrid events={events} />
+        )}
+
+        {events && events.length > 0 && view === "week" && (
+          <CalendarWeekGrid events={events} />
         )}
       </section>
     </motion.div>
