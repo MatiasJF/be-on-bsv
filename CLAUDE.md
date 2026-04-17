@@ -452,6 +452,7 @@ npm run db:reset               # applies database/*.sql to local Supabase / host
 - [x] ~Calendar week view~ — shipped in commit `124a5d7` (CalendarWeekGrid component). Closed as issue #3.
 - [x] ~Multi-speaker schema~ — shipped in commits `eccd59f` (schema + shared types), `a4c7513` (server routes), `db4576d` (client UI). `database/003_speakers.sql` handles the migration. Closed as issue #4.
 - [ ] Build Easy logo / wordmark — dormant; if/when a real BE-on-BSV wordmark asset appears, add it to §5 and swap the Chillax text for an `<img>` in `Nav.tsx`. Tracked as issue #5.
+- [ ] Render region drift — `render.yaml` says `frankfurt` but the live service is on `oregon` because Render caches region from first Blueprint apply and offers no API path to change it on existing services. Migrating requires delete + recreate, which rotates the `*.onrender.com` URL and breaks in-flight confirmation-email links. Revisit when setting up a custom domain: recreate in frankfurt + DNS the new URL at the custom domain in one go.
 
 ---
 
