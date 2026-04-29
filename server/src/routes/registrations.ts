@@ -199,7 +199,10 @@ registrationsRouter.get(
       ord_whats_on_chain_url: whatsOnChainTxUrl(reg.ord_txid, env.BSV_NETWORK),
       ord_viewer_url: ordContentUrl(reg.ord_outpoint, env.BSV_NETWORK),
       ord_gallery_url: ordGalleryUrl(reg.ord_outpoint, env.BSV_NETWORK),
-      ticket_svg_url: `${env.PUBLIC_APP_URL.replace(/\/$/, "")}/api/register/${reg.id}/ticket.svg`,
+      // Relative path: served by this same Express app, so the browser
+      // resolves it against the page host. Avoids depending on
+      // PUBLIC_APP_URL being correctly configured for the page to work.
+      ticket_svg_url: `/api/register/${reg.id}/ticket.svg`,
     });
   }),
 );
