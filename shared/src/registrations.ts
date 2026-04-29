@@ -6,8 +6,13 @@ export const RegistrationSchema = z.object({
   name: z.string().min(1).max(120),
   email: z.string().email(),
   organization: z.string().max(200).nullable().optional(),
+  /** PushDrop ticket — currently used as the redeemable ticket for check-in. */
   tx_id: z.string().nullable().optional(),
   outpoint: z.string().nullable().optional(),
+  /** 1sat-ord ticket — the visible, shareable on-chain artifact. */
+  ord_txid: z.string().nullable().optional(),
+  ord_outpoint: z.string().nullable().optional(),
+  ord_metadata_sha256: z.string().nullable().optional(),
   created_at: z.string().datetime({ offset: true }),
 });
 
@@ -31,6 +36,13 @@ export const RegistrationResponseSchema = z.object({
     .object({
       tx_id: z.string(),
       outpoint: z.string(),
+      stub: z.boolean(),
+    })
+    .nullable(),
+  ord: z
+    .object({
+      ord_txid: z.string(),
+      ord_outpoint: z.string(),
       stub: z.boolean(),
     })
     .nullable(),

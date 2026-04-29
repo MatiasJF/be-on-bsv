@@ -80,6 +80,10 @@ export const api = {
         cover_url: string | null;
       } | null;
       whats_on_chain_url: string | null;
+      ord_whats_on_chain_url: string | null;
+      ord_viewer_url: string | null;
+      ord_gallery_url: string | null;
+      ticket_svg_url: string;
     }>(`/register/${id}`),
 
   // ── Admin ──

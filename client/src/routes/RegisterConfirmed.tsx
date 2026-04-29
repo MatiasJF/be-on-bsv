@@ -19,6 +19,10 @@ interface State {
     cover_url: string | null;
   } | null;
   whats_on_chain_url: string | null;
+  ord_whats_on_chain_url: string | null;
+  ord_viewer_url: string | null;
+  ord_gallery_url: string | null;
+  ticket_svg_url: string;
 }
 
 export function RegisterConfirmed() {
@@ -99,17 +103,74 @@ export function RegisterConfirmed() {
           </div>
         )}
 
-        {qrSvg && (
-          <div
-            className="mx-auto mb-6 w-56 h-56 p-4 rounded-2xl bg-white/[0.04] border border-white/10"
-            dangerouslySetInnerHTML={{ __html: qrSvg }}
+        <div className="mx-auto mb-6 max-w-md rounded-2xl overflow-hidden border border-white/10 bg-white/[0.02]">
+          <img
+            src={state.ticket_svg_url}
+            alt="Your BE-on-BSV ticket"
+            className="block w-full h-auto"
           />
+        </div>
+        {qrSvg && (
+          <details className="mb-6 text-white/60 font-body text-xs">
+            <summary className="cursor-pointer text-bsva-cyan hover:text-white transition-colors">
+              Show plain QR
+            </summary>
+            <div
+              className="mx-auto mt-3 w-40 h-40 p-3 rounded-xl bg-white/[0.04] border border-white/10"
+              dangerouslySetInnerHTML={{ __html: qrSvg }}
+            />
+          </details>
         )}
 
-        {registration.tx_id ? (
+        {registration.ord_txid ? (
+          <div className="text-left bg-white/5 border border-white/10 rounded-lg p-4 mb-4">
+            <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+              Ord ticket {registration.ord_txid.startsWith("stub-") && <span className="text-white/40 normal-case">(local stub)</span>}
+            </div>
+            <div className="font-mono text-xs text-white/80 break-all">{registration.ord_txid}</div>
+            <div className="flex flex-wrap gap-3 mt-3 text-xs font-display font-semibold">
+              {state.ord_viewer_url && (
+                <a
+                  href={state.ord_viewer_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-bsva-cyan hover:text-white transition-colors"
+                >
+                  View inscribed SVG ↗
+                </a>
+              )}
+              {state.ord_gallery_url && (
+                <a
+                  href={state.ord_gallery_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-bsva-cyan hover:text-white transition-colors"
+                >
+                  View on 1satordinals ↗
+                </a>
+              )}
+              {state.ord_whats_on_chain_url && (
+                <a
+                  href={state.ord_whats_on_chain_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-bsva-cyan hover:text-white transition-colors"
+                >
+                  View tx on WoC ↗
+                </a>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-white/60 font-body text-sm mb-4">
+            Your ticket is being inscribed. We'll email you when it's ready.
+          </div>
+        )}
+
+        {registration.tx_id && (
           <div className="text-left bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
             <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
-              On-chain ticket {isStub && <span className="text-white/40 normal-case">(local stub)</span>}
+              Check-in token {isStub && <span className="text-white/40 normal-case">(local stub)</span>}
             </div>
             <div className="font-mono text-xs text-white/80 break-all">
               {registration.tx_id}
@@ -124,10 +185,6 @@ export function RegisterConfirmed() {
                 View on WhatsOnChain ↗
               </a>
             )}
-          </div>
-        ) : (
-          <div className="text-white/60 font-body text-sm mb-6">
-            Your ticket is being prepared. We'll email you when it's ready.
           </div>
         )}
 

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { env } from "../env.js";
+import { mintTicketOrdinal, type MintOrdResult } from "./ordinals.js";
 
 /**
  * BSV "ticket" service.
@@ -139,6 +140,27 @@ export async function mintRegistrationTicket(input: MintInput): Promise<MintResu
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`PushDrop ticket mint failed: ${msg}`);
   }
+}
+
+/**
+ * Mint a 1sat ordinal carrying the rendered ticket SVG + signed metadata.
+ *
+ * Thin wrapper that supplies the cached server wallet to `ordinals.ts`.
+ * Same failure-isolation contract as `mintRegistrationTicket`: the route
+ * keeps the registration row even if this throws.
+ */
+export async function mintTicketOrd(input: {
+  eventId: string;
+  registrationId: string;
+  eventTitle: string;
+  name: string;
+  issuedAt: string;
+  svgBytes: Uint8Array;
+}): Promise<MintOrdResult> {
+  return mintTicketOrdinal(input, async () => {
+    const wallet = await getWallet();
+    return { getClient: () => wallet.getClient() };
+  });
 }
 
 /**

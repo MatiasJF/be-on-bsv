@@ -143,8 +143,11 @@ registrations (
   name          text not null,
   email         text not null,
   organization  text,
-  tx_id         text,                  -- PushDrop ticket txid (nullable if BSV disabled)
-  outpoint      text,                  -- "<txid>.<vout>"
+  tx_id         text,                  -- PushDrop ticket txid (nullable if BSV disabled / mint failed)
+  outpoint      text,                  -- "<txid>.<vout>" — used by the future check-in/redeem flow
+  ord_txid      text,                  -- 1sat-ord ticket txid (nullable until inscribed)
+  ord_outpoint  text,                  -- ord outpoint — visible artifact on ord-aware viewers
+  ord_metadata_sha256 text,             -- SHA-256 of the OP_RETURN metadata JSON
   created_at    timestamptz default now(),
   unique (event_id, email)             -- one registration per email per event
 );
@@ -253,17 +256,21 @@ Per §07 of the brand guide: photography is full-colour, framed in a large trian
 `@bsv/simple` is the high-level wrapper: it exposes `@bsv/simple/server` (server-side wallet from a private key, via `@bsv/wallet-toolbox`) and `@bsv/simple/browser` (client-side `WalletClient` from `@bsv/sdk`). For this app **all on-chain action happens server-side** so a user never needs a wallet to register.
 
 ### What we mint
-On a successful registration we mint a **token in the `BSV_TICKET_BASKET` basket** (default `be-on-bsv-tickets`). The token's `data` payload is:
-```json
-{
-  "label": "BE-on-BSV",
-  "eventId": "<uuid>",
-  "registrationId": "<uuid>",
-  "issuedAt": "<iso-8601>"
-}
-```
+Each registration produces **two on-chain artifacts**, isolated so one's failure never blocks the other:
 
-The resulting `txid` and `outpoint` are stored on the `registrations` row. The QR on the confirmation email/page encodes the outpoint, so a future "check-in" tool can verify it (or `redeemToken` it on attendance).
+1. **PushDrop ticket** — `wallet.createToken({ data, basket: BSV_TICKET_BASKET, satoshis: 1 })`. Stored as `tx_id` / `outpoint` on the registrations row. Reserved for the future check-in/redeem flow (`wallet.redeemToken`). The token's `data` payload:
+    ```json
+    {
+      "label": "BE-on-BSV",
+      "eventId": "<uuid>",
+      "registrationId": "<uuid>",
+      "issuedAt": "<iso-8601>"
+    }
+    ```
+
+2. **1sat-ord ticket** — a 1-satoshi ordinal whose locking script carries an inline `image/svg+xml` inscription (rendered ticket art) plus a 0-sat `OP_RETURN` output with signed metadata. Stored as `ord_txid` / `ord_outpoint` / `ord_metadata_sha256`. This is the **visible artifact** — ord-aware viewers (`https://ordinals.gorillapool.io/content/<outpoint>`) render the SVG inline. Built via `@bsv/sdk`'s `LockingScript` + `P2PKH`, broadcast through the simple wallet's BRC-100 `createAction`. The pattern is lifted from `APH/certificate-poc/certificate-kit/inscription.ts`.
+
+The QR encoded inside the inscribed SVG points to the local confirmation page (`/r/:id`), which itself shows links to the ord viewer, the gallery (1satordinals.com), and WhatsOnChain for both transactions.
 
 ### `@bsv/simple/server` API surface (verified via simple-mcp)
 
@@ -401,7 +408,8 @@ All env vars are loaded once via `server/src/env.ts` (zod-validated). Document n
 | `BSV_SERVER_PRIVATE_KEY` | server | only if `BSV_ENABLED=true` | WIF private key for the server wallet. |
 | `BSV_NETWORK` | server | no (default `main`) | `main` or `test` — passed to `ServerWallet.create`. |
 | `BSV_STORAGE_URL` | server | no | Wallet-toolbox storage backend. Defaults to `https://storage.babbage.systems`. |
-| `BSV_TICKET_BASKET` | server | no | Logical basket for ticket tokens. Defaults to `be-on-bsv-tickets`. |
+| `BSV_TICKET_BASKET` | server | no | Logical basket for PushDrop ticket tokens. Defaults to `be-on-bsv-tickets`. |
+| `BSV_ORD_BASKET` | server | no | Basket for the 1sat-ord ticket inscriptions. Defaults to `be-on-bsv-ord-tickets`. |
 | `RESEND_API_KEY` | server | no | Send real confirmation emails. Missing → console-log fallback. |
 | `EMAIL_FROM` | server | only if `RESEND_API_KEY` set | e.g. `events@buildeasy.bsvassociation.org`. |
 | `PUBLIC_APP_URL` | server | yes in prod | Used for confirmation links and QR payload. |

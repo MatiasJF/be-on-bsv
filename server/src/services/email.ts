@@ -18,6 +18,10 @@ export interface RegistrationEmailInput {
   confirmationUrl: string;
   /** WhatsOnChain tx URL — null when the mint stubbed or failed. */
   whatsOnChainUrl: string | null;
+  /** Ord viewer URL that renders the inscribed SVG inline. */
+  ordViewerUrl: string | null;
+  /** Ord gallery (1satordinals.com) URL — secondary link. */
+  ordGalleryUrl: string | null;
 }
 
 /**
@@ -60,13 +64,23 @@ function renderHtml(input: RegistrationEmailInput): string {
 
   const where = input.isVirtual ? "Online" : input.eventLocation ?? "TBA";
 
-  // Primary CTA goes to WhatsOnChain (proves the ticket on-chain) when a
-  // real txid exists. Stub/failed mints fall back to the confirmation page
-  // so the button always resolves to something useful.
-  const primaryHref = input.whatsOnChainUrl ?? input.confirmationUrl;
-  const primaryLabel = input.whatsOnChainUrl
-    ? "View your ticket on-chain ↗"
-    : "View your ticket";
+  // Primary CTA goes to the ord viewer (renders the inscribed SVG inline)
+  // when one exists. Falls through to WoC for the underlying tx, then to the
+  // confirmation page for stub/failed mints — the button always resolves
+  // to something useful.
+  const primaryHref =
+    input.ordViewerUrl ?? input.whatsOnChainUrl ?? input.confirmationUrl;
+  const primaryLabel = input.ordViewerUrl
+    ? "View your ticket ↗"
+    : input.whatsOnChainUrl
+      ? "View your ticket on-chain ↗"
+      : "View your ticket";
+
+  const ordSecondary = input.ordGalleryUrl
+    ? `<div style="text-align:center;margin:6px 0 0;font-size:12px;color:#6b6b75;">
+         <a href="${escapeAttr(input.ordGalleryUrl)}" style="color:${blue};text-decoration:none;">View ord listing</a>
+       </div>`
+    : "";
 
   const meetingBlock =
     input.isVirtual && input.meetingUrl
@@ -126,6 +140,7 @@ function renderHtml(input: RegistrationEmailInput): string {
             <div style="text-align:center;margin:32px 0 8px;">
               <a href="${escapeAttr(primaryHref)}" style="display:inline-block;background:${blue};color:#fff;text-decoration:none;padding:14px 28px;border-radius:999px;font-weight:600;">${primaryLabel}</a>
             </div>
+            ${ordSecondary}
             <div style="text-align:center;margin:8px 0 0;font-size:12px;color:#6b6b75;">
               Lost this email? <a href="${escapeAttr(input.confirmationUrl)}" style="color:${blue};text-decoration:none;">Reload your ticket</a>.
             </div>
