@@ -126,6 +126,7 @@ events (
   ends_at       timestamptz,
   location      text,                  -- "virtual" or physical address
   is_virtual    boolean default false,
+  meeting_url   text,                  -- join link for virtual events; never exposed to anonymous browsers
   cover_url     text,                  -- supabase storage public url
   tags          text[] default '{}',
   host_name     text,

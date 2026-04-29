@@ -10,7 +10,14 @@ import { formatEventDateTime } from "../lib/format.js";
 
 interface State {
   registration: Registration;
-  event: { title: string; starts_at: string; location: string | null; is_virtual: boolean; cover_url: string | null } | null;
+  event: {
+    title: string;
+    starts_at: string;
+    location: string | null;
+    is_virtual: boolean;
+    meeting_url: string | null;
+    cover_url: string | null;
+  } | null;
   whats_on_chain_url: string | null;
 }
 
@@ -121,6 +128,25 @@ export function RegisterConfirmed() {
         ) : (
           <div className="text-white/60 font-body text-sm mb-6">
             Your ticket is being prepared. We'll email you when it's ready.
+          </div>
+        )}
+
+        {event?.is_virtual && event.meeting_url && (
+          <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-bsva-cyan/10 p-4 text-left">
+            <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+              Meeting link
+            </div>
+            <a
+              href={event.meeting_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bsva-navy text-white font-display font-semibold text-sm hover:bg-bsva-blue transition-colors"
+            >
+              Join the meeting ↗
+            </a>
+            <div className="mt-2 text-xs text-white/60 font-mono break-all">
+              {event.meeting_url}
+            </div>
           </div>
         )}
 

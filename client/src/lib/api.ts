@@ -71,12 +71,27 @@ export const api = {
   registration: (id: string) =>
     request<{
       registration: Registration;
-      event: { title: string; starts_at: string; location: string | null; is_virtual: boolean; cover_url: string | null } | null;
+      event: {
+        title: string;
+        starts_at: string;
+        location: string | null;
+        is_virtual: boolean;
+        meeting_url: string | null;
+        cover_url: string | null;
+      } | null;
       whats_on_chain_url: string | null;
     }>(`/register/${id}`),
 
   // ── Admin ──
   admin: {
+    /**
+     * Same shape as `api.events.get` but signed with the admin JWT, so
+     * the server returns private fields (e.g. `meeting_url`) that are
+     * stripped from anonymous responses.
+     */
+    getEvent: (id: string) =>
+      request<{ event: Event }>(`/events/${id}`, { admin: true }),
+
     createEvent: (input: EventInput, cover?: File) => {
       const fd = new FormData();
       for (const [k, v] of Object.entries(input)) {
