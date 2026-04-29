@@ -103,13 +103,10 @@ export function RegisterConfirmed() {
           </div>
         )}
 
-        <div className="mx-auto mb-6 max-w-md rounded-2xl overflow-hidden border border-white/10 bg-white/[0.02]">
-          <img
-            src={state.ticket_svg_url}
-            alt="Your BE-on-BSV ticket"
-            className="block w-full h-auto"
-          />
-        </div>
+        <TicketPreview
+          ordViewerUrl={state.ord_viewer_url}
+          fallbackUrl={state.ticket_svg_url}
+        />
         {qrSvg && (
           <details className="mb-6 text-white/60 font-body text-xs">
             <summary className="cursor-pointer text-bsva-cyan hover:text-white transition-colors">
@@ -128,6 +125,16 @@ export function RegisterConfirmed() {
               Ord ticket {registration.ord_txid.startsWith("stub-") && <span className="text-white/40 normal-case">(local stub)</span>}
             </div>
             <div className="font-mono text-xs text-white/80 break-all">{registration.ord_txid}</div>
+            {state.ord_whats_on_chain_url && (
+              <a
+                href={state.ord_whats_on_chain_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-bsva-blue text-white text-xs font-display font-semibold hover:bg-bsva-cyan hover:text-bsva-navy transition-colors"
+              >
+                View on WhatsOnChain ↗
+              </a>
+            )}
             <div className="flex flex-wrap gap-3 mt-3 text-xs font-display font-semibold">
               {state.ord_viewer_url && (
                 <a
@@ -136,7 +143,7 @@ export function RegisterConfirmed() {
                   rel="noreferrer"
                   className="text-bsva-cyan hover:text-white transition-colors"
                 >
-                  View inscribed SVG ↗
+                  Open inscribed SVG ↗
                 </a>
               )}
               {state.ord_gallery_url && (
@@ -147,16 +154,6 @@ export function RegisterConfirmed() {
                   className="text-bsva-cyan hover:text-white transition-colors"
                 >
                   View on 1satordinals ↗
-                </a>
-              )}
-              {state.ord_whats_on_chain_url && (
-                <a
-                  href={state.ord_whats_on_chain_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-bsva-cyan hover:text-white transition-colors"
-                >
-                  View tx on WoC ↗
                 </a>
               )}
             </div>
@@ -221,5 +218,44 @@ export function RegisterConfirmed() {
         </div>
       </GlassCard>
     </motion.div>
+  );
+}
+
+/**
+ * Inline ticket preview. Prefers the on-chain ord content URL (gorillapool
+ * serves the inscription with the right Content-Type so the browser renders
+ * it as an SVG). Falls back to the local server-rendered endpoint when the
+ * ord isn't ready yet, or when the chain viewer is unreachable from this
+ * client. Both paths point at the same artifact.
+ */
+function TicketPreview({
+  ordViewerUrl,
+  fallbackUrl,
+}: {
+  ordViewerUrl: string | null;
+  fallbackUrl: string;
+}) {
+  const [src, setSrc] = useState<string>(ordViewerUrl ?? fallbackUrl);
+  const [triedFallback, setTriedFallback] = useState(false);
+
+  useEffect(() => {
+    setSrc(ordViewerUrl ?? fallbackUrl);
+    setTriedFallback(false);
+  }, [ordViewerUrl, fallbackUrl]);
+
+  return (
+    <div className="mx-auto mb-6 max-w-md rounded-2xl overflow-hidden border border-white/10 bg-white/[0.02]">
+      <img
+        src={src}
+        alt="Your BE-on-BSV ticket"
+        className="block w-full h-auto"
+        onError={() => {
+          if (!triedFallback && src !== fallbackUrl) {
+            setTriedFallback(true);
+            setSrc(fallbackUrl);
+          }
+        }}
+      />
+    </div>
   );
 }
