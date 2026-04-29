@@ -130,6 +130,12 @@ export const api = {
     listRegistrations: (eventId: string) =>
       request<{ registrations: Registration[] }>(`/registrations/${eventId}`, { admin: true }),
 
+    deleteRegistration: (registrationId: string) =>
+      request<void>(`/admin/registrations/${registrationId}`, {
+        method: "DELETE",
+        admin: true,
+      }),
+
     exportUrl: (eventId: string) => `${BASE}/export/${eventId}`,
   },
 };

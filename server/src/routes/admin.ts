@@ -149,6 +149,24 @@ adminRouter.post(
   }),
 );
 
+// ── DELETE /api/admin/registrations/:id ─────────────────────
+// Hard-delete a registration. Frees the (event_id, email) unique
+// constraint so the same email can register again. On-chain artifacts
+// (PushDrop + ord) remain on chain — this only removes our off-chain
+// bookkeeping row.
+adminRouter.delete(
+  "/registrations/:id",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { error } = await supabase
+      .from("registrations")
+      .delete()
+      .eq("id", req.params.id);
+    if (error) throw new HttpError(500, error.message);
+    res.status(204).end();
+  }),
+);
+
 function formatTicketDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString("en-GB", {

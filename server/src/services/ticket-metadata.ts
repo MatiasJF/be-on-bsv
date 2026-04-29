@@ -10,7 +10,13 @@ import { Utils } from "@bsv/sdk";
  * stripping that key and re-canonicalising.
  */
 export const TICKET_SCHEMA_ID = "be-on-bsv-ticket/v1" as const;
-export const TICKET_PROTOCOL_ID: [0, string] = [0, "be-on-bsv ticket"];
+/**
+ * BRC-43 protocol name. The wallet enforces "letters, numbers and spaces only";
+ * hyphens were tried first and rejected with HTTP 503 from `createSignature`,
+ * so we use spaces. Changing this invalidates signatures on existing metadata,
+ * so it's effectively frozen.
+ */
+export const TICKET_PROTOCOL_ID: [0, string] = [0, "be on bsv ticket"];
 export const TICKET_KEY_ID = "1";
 
 export interface UnsignedTicketMetadata {
