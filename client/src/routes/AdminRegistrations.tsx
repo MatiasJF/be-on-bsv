@@ -16,6 +16,7 @@ export function AdminRegistrations() {
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [retryingOrd, setRetryingOrd] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -67,6 +68,22 @@ export function AdminRegistrations() {
       alert(err instanceof Error ? err.message : "ord retry failed");
     } finally {
       setRetryingOrd(null);
+    }
+  }
+
+  async function onDelete(reg: Registration) {
+    const ok = window.confirm(
+      `Delete registration for ${reg.email}? On-chain artifacts stay on the chain — this only removes the row.`,
+    );
+    if (!ok) return;
+    setDeleting(reg.id);
+    try {
+      await api.admin.deleteRegistration(reg.id);
+      setRegs((prev) => (prev ? prev.filter((r) => r.id !== reg.id) : prev));
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "delete failed");
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -175,6 +192,13 @@ export function AdminRegistrations() {
                       {retryingOrd === r.id ? "Retrying ord…" : "Retry ord"}
                     </button>
                   )}
+                  <button
+                    onClick={() => onDelete(r)}
+                    disabled={deleting === r.id}
+                    className="text-xs font-display font-semibold text-red-300 hover:text-red-200 disabled:opacity-50"
+                  >
+                    {deleting === r.id ? "Deleting…" : "Delete"}
+                  </button>
                 </td>
               </tr>
             ))}
