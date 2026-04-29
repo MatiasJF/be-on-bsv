@@ -21,6 +21,27 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB — covers 4K JPEGs and most GIFs
 });
 
+/**
+ * Resolve whether the caller is an authenticated admin. Used on the
+ * public GET endpoints to decide whether to strip private fields like
+ * `meeting_url`. Returns false on any failure (no header, bad token,
+ * non-admin role) — never throws, so anonymous requests still succeed.
+ */
+async function isAdminRequest(req: import("express").Request): Promise<boolean> {
+  const auth = req.header("authorization");
+  if (!auth?.toLowerCase().startsWith("bearer ")) return false;
+  try {
+    const { data, error } = await supabase.auth.getUser(auth.slice(7).trim());
+    if (error || !data.user) return false;
+    const role =
+      (data.user.app_metadata as { role?: string } | undefined)?.role ??
+      (data.user.user_metadata as { role?: string } | undefined)?.role;
+    return role === "admin";
+  } catch {
+    return false;
+  }
+}
+
 // ── GET /api/events ──────────────────────────────────────────
 eventsRouter.get(
   "/",
@@ -62,9 +83,10 @@ eventsRouter.get(
     }
     if (error) throw new HttpError(500, error.message);
 
-    const events = (data ?? []).map((row) =>
-      flattenEventSpeakers(row as unknown as Record<string, unknown>),
-    );
+    const admin = await isAdminRequest(req);
+    const events = (data ?? [])
+      .map((row) => flattenEventSpeakers(row as unknown as Record<string, unknown>))
+      .map((e) => (admin ? e : stripPrivateFields(e)));
     res.json({ events });
   }),
 );
@@ -91,7 +113,9 @@ eventsRouter.get(
 
     if (error) throw new HttpError(500, error.message);
     if (!data) throw new HttpError(404, "event_not_found");
-    res.json({ event: flattenEventSpeakers(data as unknown as Record<string, unknown>) });
+    const flat = flattenEventSpeakers(data as unknown as Record<string, unknown>);
+    const admin = await isAdminRequest(req);
+    res.json({ event: admin ? flat : stripPrivateFields(flat) });
   }),
 );
 
@@ -264,10 +288,23 @@ function parseEventBody(raw: Record<string, unknown>): Record<string, unknown> {
     }
   }
   // Strip empty strings → null so zod's .nullable() accepts them
-  for (const k of ["ends_at", "location", "host_name", "host_bio", "host_avatar", "cover_url"]) {
+  for (const k of ["ends_at", "location", "meeting_url", "host_name", "host_bio", "host_avatar", "cover_url"]) {
     if (out[k] === "") out[k] = null;
   }
   return out;
+}
+
+/**
+ * Drop fields that should never reach anonymous browsers. `meeting_url`
+ * is the join link for virtual events — it's surfaced post-registration
+ * (confirmation page + email) but not on the public event page.
+ *
+ * Admin POST/PUT responses skip this so the form can round-trip the value.
+ */
+function stripPrivateFields(event: Record<string, unknown>): Record<string, unknown> {
+  const { meeting_url: _omit, ...rest } = event;
+  void _omit;
+  return rest;
 }
 
 async function uploadCover(file: Express.Multer.File): Promise<string> {

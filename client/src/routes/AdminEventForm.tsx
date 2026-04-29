@@ -28,6 +28,7 @@ const empty: EventInput = {
   ends_at: null,
   location: "",
   is_virtual: true,
+  meeting_url: null,
   cover_url: null,
   tags: [],
   speakers: [],
@@ -46,7 +47,7 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
 
   useEffect(() => {
     if (mode !== "edit" || !id) return;
-    api.events.get(id).then((r) => {
+    api.admin.getEvent(id).then((r) => {
       setForm({
         title: r.event.title,
         description: r.event.description,
@@ -54,6 +55,7 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
         ends_at: r.event.ends_at ?? null,
         location: r.event.location ?? "",
         is_virtual: r.event.is_virtual,
+        meeting_url: r.event.meeting_url ?? null,
         cover_url: r.event.cover_url ?? null,
         tags: r.event.tags,
         speakers: r.event.speakers,
@@ -200,6 +202,21 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
             />
             Virtual event
           </label>
+
+          {form.is_virtual && (
+            <Field label="Meeting link (Zoom, Meet, Jitsi, …)">
+              <input
+                type="url"
+                value={form.meeting_url ?? ""}
+                onChange={(e) => update("meeting_url", e.target.value || null)}
+                placeholder="https://…"
+                className={inputCls}
+              />
+              <span className="block mt-1 text-xs text-white/40 font-body">
+                Only sent to registrants — never shown publicly.
+              </span>
+            </Field>
+          )}
 
           <Field label="Tags (comma-separated)">
             <input

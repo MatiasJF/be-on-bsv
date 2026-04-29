@@ -20,7 +20,7 @@ registrationsRouter.post(
     // 1. Validate the event exists and is not deleted.
     const { data: event, error: eventErr } = await supabase
       .from("events")
-      .select("id, title, starts_at, location, is_virtual")
+      .select("id, title, starts_at, location, is_virtual, meeting_url")
       .eq("id", input.event_id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -90,9 +90,11 @@ registrationsRouter.post(
         eventStartsAt: event.starts_at,
         eventLocation: event.location ?? null,
         isVirtual: event.is_virtual,
+        meetingUrl: event.meeting_url ?? null,
         txId: ticket?.tx_id ?? null,
         qrPngDataUrl,
         confirmationUrl,
+        whatsOnChainUrl: wocUrl,
       });
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -124,7 +126,7 @@ registrationsRouter.get(
 
     const { data: event } = await supabase
       .from("events")
-      .select("title, starts_at, location, is_virtual, cover_url")
+      .select("title, starts_at, location, is_virtual, meeting_url, cover_url")
       .eq("id", reg.event_id)
       .maybeSingle();
 

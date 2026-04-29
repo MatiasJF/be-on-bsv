@@ -10,9 +10,14 @@ export interface RegistrationEmailInput {
   eventStartsAt: string;
   eventLocation: string | null;
   isVirtual: boolean;
+  /** Join URL for virtual events. Surfaced as a CTA when present. */
+  meetingUrl: string | null;
   txId: string | null;
   qrPngDataUrl: string | null;
+  /** Public confirmation page (`/r/:id`). Used as the fallback "manage" link. */
   confirmationUrl: string;
+  /** WhatsOnChain tx URL — null when the mint stubbed or failed. */
+  whatsOnChainUrl: string | null;
 }
 
 /**
@@ -55,6 +60,27 @@ function renderHtml(input: RegistrationEmailInput): string {
 
   const where = input.isVirtual ? "Online" : input.eventLocation ?? "TBA";
 
+  // Primary CTA goes to WhatsOnChain (proves the ticket on-chain) when a
+  // real txid exists. Stub/failed mints fall back to the confirmation page
+  // so the button always resolves to something useful.
+  const primaryHref = input.whatsOnChainUrl ?? input.confirmationUrl;
+  const primaryLabel = input.whatsOnChainUrl
+    ? "View your ticket on-chain ↗"
+    : "View your ticket";
+
+  const meetingBlock =
+    input.isVirtual && input.meetingUrl
+      ? `<div style="margin:0 0 24px;padding:16px;border-radius:12px;background:${cyan}1A;border:1px solid ${cyan};">
+           <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:${navy};font-weight:700;margin-bottom:8px;">Meeting link</div>
+           <div style="text-align:center;">
+             <a href="${escapeAttr(input.meetingUrl)}" style="display:inline-block;background:${navy};color:#fff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;">Join the meeting ↗</a>
+           </div>
+           <div style="margin-top:10px;font-size:12px;color:${soft};word-break:break-all;text-align:center;">
+             <a href="${escapeAttr(input.meetingUrl)}" style="color:${blue};text-decoration:none;">${escapeHtml(input.meetingUrl)}</a>
+           </div>
+         </div>`
+      : "";
+
   return `<!doctype html>
 <html>
   <body style="margin:0;padding:0;background:#EFF0F7;font-family:'Helvetica Neue',Arial,sans-serif;color:${soft};">
@@ -88,16 +114,20 @@ function renderHtml(input: RegistrationEmailInput): string {
                   : ""
               }
             </table>
+            ${meetingBlock}
             ${
               input.qrPngDataUrl
                 ? `<div style="text-align:center;margin:24px 0;">
                      <img src="${input.qrPngDataUrl}" alt="Your ticket QR" width="180" height="180" style="display:inline-block;border:8px solid #fff;border-radius:12px;background:#fff;" />
-                     <div style="font-size:12px;color:${soft};opacity:0.7;margin-top:8px;">Show this QR at the event.</div>
+                     <div style="font-size:12px;color:${soft};opacity:0.7;margin-top:8px;">Scan to view your ticket on-chain.</div>
                    </div>`
                 : ""
             }
             <div style="text-align:center;margin:32px 0 8px;">
-              <a href="${input.confirmationUrl}" style="display:inline-block;background:${blue};color:#fff;text-decoration:none;padding:14px 28px;border-radius:999px;font-weight:600;">View your ticket</a>
+              <a href="${escapeAttr(primaryHref)}" style="display:inline-block;background:${blue};color:#fff;text-decoration:none;padding:14px 28px;border-radius:999px;font-weight:600;">${primaryLabel}</a>
+            </div>
+            <div style="text-align:center;margin:8px 0 0;font-size:12px;color:#6b6b75;">
+              Lost this email? <a href="${escapeAttr(input.confirmationUrl)}" style="color:${blue};text-decoration:none;">Reload your ticket</a>.
             </div>
             <p style="margin:32px 0 0;font-size:12px;color:#6b6b75;text-align:center;">
               Together <span style="color:${cyan};">▶</span> Towards Better
@@ -108,6 +138,10 @@ function renderHtml(input: RegistrationEmailInput): string {
     </table>
   </body>
 </html>`;
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 }
 
 function escapeHtml(s: string): string {

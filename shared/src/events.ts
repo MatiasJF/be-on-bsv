@@ -21,6 +21,13 @@ export const EventSchema = z.object({
   ends_at: z.string().datetime({ offset: true }).nullable().optional(),
   location: z.string().nullable().optional(),
   is_virtual: z.boolean().default(false),
+  /**
+   * URL where registrants of a virtual event join (Zoom/Meet/Jitsi/etc.).
+   * Only meaningful when `is_virtual = true`. Never exposed in public
+   * listings — surfaced only post-registration on the confirmation page
+   * and in the confirmation email.
+   */
+  meeting_url: z.string().url().nullable().optional(),
   cover_url: z.string().url().nullable().optional(),
   tags: z.array(z.string()).default([]),
   /** @deprecated use `speakers[]`. Kept for legacy rows. */
@@ -52,6 +59,7 @@ export const EventInputSchema = z.object({
   ends_at: z.string().datetime({ offset: true }).nullable().optional(),
   location: z.string().max(500).nullable().optional(),
   is_virtual: z.boolean().default(false),
+  meeting_url: z.string().url().max(2000).nullable().optional(),
   cover_url: z.string().url().nullable().optional(),
   tags: z.array(z.string().min(1).max(40)).max(20).default([]),
   /** Up to 10 speakers per event. */
