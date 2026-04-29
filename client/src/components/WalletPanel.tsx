@@ -28,6 +28,7 @@ export function WalletPanel() {
   const {
     info,
     pendingMintCount,
+    pendingOrdCount,
     loading: infoLoading,
     error: infoError,
     refresh,
@@ -140,6 +141,19 @@ export function WalletPanel() {
             <div className="text-white/70 leading-snug">
               These registrations never got an on-chain ticket. Open the event's registrations
               list from the dashboard to retry minting.
+            </div>
+          </div>
+        )}
+
+        {pendingOrdCount > 0 && (
+          <div className="mt-3 rounded-lg border border-bsva-cyan/30 bg-bsva-cyan/[0.06] p-3 text-sm font-body">
+            <div className="text-bsva-cyan font-display font-semibold mb-1">
+              {pendingOrdCount} registration{pendingOrdCount === 1 ? "" : "s"} pending ord
+            </div>
+            <div className="text-white/70 leading-snug">
+              These registrations are missing the inscribed-SVG ord. Use{" "}
+              <span className="text-bsva-cyan">Retry ord</span> on each row from the event's
+              registrations list.
             </div>
           </div>
         )}

@@ -7,7 +7,7 @@ import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
 import { formatEventDateTime } from "../lib/format.js";
 import { getAccessToken } from "../lib/supabase.js";
-import { retryMintForRegistration } from "../lib/wallet.js";
+import { retryMintForRegistration, retryOrdMintForRegistration } from "../lib/wallet.js";
 
 export function AdminRegistrations() {
   const { id } = useParams();
@@ -15,6 +15,7 @@ export function AdminRegistrations() {
   const [regs, setRegs] = useState<Registration[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [retryingOrd, setRetryingOrd] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -44,6 +45,28 @@ export function AdminRegistrations() {
       alert(err instanceof Error ? err.message : "retry failed");
     } finally {
       setRetrying(null);
+    }
+  }
+
+  async function onRetryOrd(regId: string) {
+    setRetryingOrd(regId);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("not signed in");
+      const ord = await retryOrdMintForRegistration({ registrationId: regId, authToken: token });
+      setRegs((prev) =>
+        prev
+          ? prev.map((r) =>
+              r.id === regId
+                ? { ...r, ord_txid: ord.ord_txid, ord_outpoint: ord.ord_outpoint }
+                : r,
+            )
+          : prev,
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "ord retry failed");
+    } finally {
+      setRetryingOrd(null);
     }
   }
 
@@ -110,6 +133,7 @@ export function AdminRegistrations() {
               <th className="px-4 py-3">Organization</th>
               <th className="px-4 py-3">Registered</th>
               <th className="px-4 py-3">TxID</th>
+              <th className="px-4 py-3">Ord</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
@@ -122,12 +146,17 @@ export function AdminRegistrations() {
                 <td className="px-4 py-3 text-white/60">
                   {new Date(r.created_at).toLocaleString()}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-bsva-cyan/80 truncate max-w-[200px]">
+                <td className="px-4 py-3 font-mono text-xs text-bsva-cyan/80 truncate max-w-[180px]">
                   {r.tx_id ?? (
                     <span className="text-yellow-300 font-body not-italic">pending mint</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 font-mono text-xs text-bsva-cyan/80 truncate max-w-[180px]">
+                  {r.ord_txid ?? (
+                    <span className="text-yellow-300 font-body not-italic">pending ord</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 space-x-3 whitespace-nowrap">
                   {!r.tx_id && (
                     <button
                       onClick={() => onRetry(r.id)}
@@ -137,12 +166,21 @@ export function AdminRegistrations() {
                       {retrying === r.id ? "Retrying…" : "Retry mint"}
                     </button>
                   )}
+                  {!r.ord_txid && (
+                    <button
+                      onClick={() => onRetryOrd(r.id)}
+                      disabled={retryingOrd === r.id}
+                      className="text-xs font-display font-semibold text-bsva-cyan hover:text-white disabled:opacity-50"
+                    >
+                      {retryingOrd === r.id ? "Retrying ord…" : "Retry ord"}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
             {regs && regs.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-center py-10 text-white/60">
+                <td colSpan={7} className="text-center py-10 text-white/60">
                   No registrations yet.
                 </td>
               </tr>

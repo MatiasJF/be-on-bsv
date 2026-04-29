@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { RegistrationInputSchema } from "@be-on-bsv/shared";
 import { supabase } from "../services/supabase.js";
-import { mintRegistrationTicket } from "../services/bsv.js";
+import { mintRegistrationTicket, mintTicketOrd } from "../services/bsv.js";
 import { sendRegistrationEmail } from "../services/email.js";
 import { renderQrPngDataUrl } from "../services/qr.js";
+import { renderTicketSvg, svgToBytes } from "../services/ticket-renderer.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { HttpError, asyncHandler } from "../middleware/error.js";
 import { whatsOnChainTxUrl } from "../lib/whatsonchain.js";
+import { ordContentUrl, ordGalleryUrl } from "../lib/ord-viewer.js";
 import { env } from "../env.js";
 
 export const registrationsRouter: Router = Router();
@@ -72,15 +74,70 @@ registrationsRouter.post(
       console.error("[register] mint failed:", err instanceof Error ? err.message : err);
     }
 
-    // 4. Render QR + send confirmation email. Same isolation: failure here
+    // 4. Mint the 1sat-ord ticket (separate isolation from the PushDrop).
+    //    The ord carries the rendered SVG + signed metadata and is the
+    //    visible artifact on ord-aware viewers.
+    const confirmationUrl = `${env.PUBLIC_APP_URL}/r/${registration.id}`;
+    const issuedAt = new Date().toISOString();
+    let ord: { ord_txid: string; ord_outpoint: string; stub: boolean } | null = null;
+    let svgBytes: Uint8Array | null = null;
+    try {
+      const svg = await renderTicketSvg({
+        eventTitle: event.title,
+        name: registration.name,
+        date: formatTicketDate(event.starts_at),
+        where: event.is_virtual ? "Online" : event.location ?? "TBA",
+        registrationId: registration.id,
+        eventId: event.id,
+        issuedAt: formatTicketDate(issuedAt),
+        qrPayload: confirmationUrl,
+      });
+      svgBytes = svgToBytes(svg);
+
+      const ordResult = await mintTicketOrd({
+        eventId: event.id,
+        registrationId: registration.id,
+        eventTitle: event.title,
+        name: registration.name,
+        issuedAt,
+        svgBytes,
+      });
+      ord = {
+        ord_txid: ordResult.ord_txid,
+        ord_outpoint: ordResult.ord_outpoint,
+        stub: ordResult.stub,
+      };
+      const { error: ordPersistErr } = await supabase
+        .from("registrations")
+        .update({
+          ord_txid: ordResult.ord_txid,
+          ord_outpoint: ordResult.ord_outpoint,
+          ord_metadata_sha256: ordResult.ord_metadata_sha256,
+        })
+        .eq("id", registration.id);
+      if (ordPersistErr) {
+        // eslint-disable-next-line no-console
+        console.error("[register] failed to persist ord_*:", ordPersistErr.message);
+      } else {
+        registration.ord_txid = ordResult.ord_txid;
+        registration.ord_outpoint = ordResult.ord_outpoint;
+        registration.ord_metadata_sha256 = ordResult.ord_metadata_sha256;
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[register] ord mint failed:", err instanceof Error ? err.message : err);
+    }
+
+    // 5. Render QR + send confirmation email. Same isolation: failure here
     //    doesn't fail the request — registration is already persisted.
     try {
-      const confirmationUrl = `${env.PUBLIC_APP_URL}/r/${registration.id}`;
-      // QR encodes a WhatsOnChain link for real tickets so a phone scan
-      // takes you straight to the on-chain proof. Stub tickets fall back
-      // to the confirmation page so the QR still scans to something useful.
+      // The QR in the email points to the ord viewer when available so a
+      // phone scan opens the on-chain SVG directly. Falls through:
+      //   ord viewer → WoC tx → confirmation page.
+      const ordViewerUrl = ordContentUrl(ord?.ord_outpoint, env.BSV_NETWORK);
       const wocUrl = whatsOnChainTxUrl(ticket?.tx_id, env.BSV_NETWORK);
-      const qrPayload = wocUrl ?? confirmationUrl;
+      const ordWocUrl = whatsOnChainTxUrl(ord?.ord_txid, env.BSV_NETWORK);
+      const qrPayload = ordViewerUrl ?? wocUrl ?? confirmationUrl;
       const qrPngDataUrl = await renderQrPngDataUrl(qrPayload);
 
       await sendRegistrationEmail({
@@ -94,7 +151,9 @@ registrationsRouter.post(
         txId: ticket?.tx_id ?? null,
         qrPngDataUrl,
         confirmationUrl,
-        whatsOnChainUrl: wocUrl,
+        whatsOnChainUrl: ordWocUrl ?? wocUrl,
+        ordViewerUrl,
+        ordGalleryUrl: ordGalleryUrl(ord?.ord_outpoint, env.BSV_NETWORK),
       });
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -105,6 +164,7 @@ registrationsRouter.post(
       registration,
       event_title: event.title,
       ticket,
+      ord,
     });
   }),
 );
@@ -117,7 +177,9 @@ registrationsRouter.get(
   asyncHandler(async (req, res) => {
     const { data: reg, error } = await supabase
       .from("registrations")
-      .select("id, event_id, name, email, organization, tx_id, outpoint, created_at")
+      .select(
+        "id, event_id, name, email, organization, tx_id, outpoint, ord_txid, ord_outpoint, ord_metadata_sha256, created_at",
+      )
       .eq("id", req.params.id)
       .maybeSingle();
 
@@ -134,7 +196,56 @@ registrationsRouter.get(
       registration: reg,
       event,
       whats_on_chain_url: whatsOnChainTxUrl(reg.tx_id, env.BSV_NETWORK),
+      ord_whats_on_chain_url: whatsOnChainTxUrl(reg.ord_txid, env.BSV_NETWORK),
+      ord_viewer_url: ordContentUrl(reg.ord_outpoint, env.BSV_NETWORK),
+      ord_gallery_url: ordGalleryUrl(reg.ord_outpoint, env.BSV_NETWORK),
+      ticket_svg_url: `${env.PUBLIC_APP_URL.replace(/\/$/, "")}/api/register/${reg.id}/ticket.svg`,
     });
+  }),
+);
+
+// ── GET /api/register/:id/ticket.svg (public, by id only) ────
+// Server-side render of the BE-on-BSV ticket as SVG. This is the same
+// artifact that gets inscribed on-chain as the 1sat ordinal — keeping
+// it accessible over HTTP gives us a stable preview and a fallback when
+// the on-chain viewer is unreachable.
+registrationsRouter.get(
+  "/register/:id/ticket.svg",
+  asyncHandler(async (req, res) => {
+    const { data: reg, error } = await supabase
+      .from("registrations")
+      .select("id, event_id, name, created_at")
+      .eq("id", req.params.id)
+      .maybeSingle();
+    if (error) throw new HttpError(500, error.message);
+    if (!reg) throw new HttpError(404, "registration_not_found");
+
+    const { data: event } = await supabase
+      .from("events")
+      .select("title, starts_at, location, is_virtual")
+      .eq("id", reg.event_id)
+      .maybeSingle();
+    if (!event) throw new HttpError(404, "event_not_found");
+
+    const where = event.is_virtual ? "Online" : event.location ?? "TBA";
+    const date = formatTicketDate(event.starts_at);
+    const issuedAt = formatTicketDate(reg.created_at);
+    const qrPayload = `${env.PUBLIC_APP_URL}/r/${reg.id}`;
+
+    const svg = await renderTicketSvg({
+      eventTitle: event.title,
+      name: reg.name,
+      date,
+      where,
+      registrationId: reg.id,
+      eventId: reg.event_id,
+      issuedAt,
+      qrPayload,
+    });
+
+    res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(svg);
   }),
 );
 
@@ -153,3 +264,16 @@ registrationsRouter.get(
     res.json({ registrations: data ?? [] });
   }),
 );
+
+function formatTicketDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+}

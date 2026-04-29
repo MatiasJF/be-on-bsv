@@ -39,6 +39,12 @@ const EnvSchema = z.object({
   BSV_STORAGE_URL: z.string().url().default("https://storage.babbage.systems"),
   BSV_TICKET_BASKET: z.string().default("be-on-bsv-tickets"),
   /**
+   * Basket name for the 1sat-ordinal ticket inscriptions. Separate from the
+   * PushDrop `BSV_TICKET_BASKET` so the wallet's UTXO bookkeeping and the
+   * admin's listings stay legible per-flow.
+   */
+  BSV_ORD_BASKET: z.string().default("be-on-bsv-ord-tickets"),
+  /**
    * If spendable balance falls below this (in sats), the admin wallet
    * panel surfaces a warning. Defaults to ~100 tickets' worth — tune
    * based on your expected registration rate.

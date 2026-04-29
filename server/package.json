@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@be-on-bsv/shared": "*",
+    "@bsv/sdk": "^2.0.14",
     "@bsv/simple": "^0.3.0",
     "@supabase/supabase-js": "^2.45.0",
     "csv-stringify": "^6.5.2",

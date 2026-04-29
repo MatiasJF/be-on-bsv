@@ -182,6 +182,7 @@ export interface ServerWalletInfo {
 export function useServerWalletInfo(authTokenGetter: () => Promise<string | null>) {
   const [info, setInfo] = useState<ServerWalletInfo | null>(null);
   const [pendingMintCount, setPendingMintCount] = useState<number>(0);
+  const [pendingOrdCount, setPendingOrdCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -201,9 +202,11 @@ export function useServerWalletInfo(authTokenGetter: () => Promise<string | null
       const data = (await res.json()) as {
         wallet: ServerWalletInfo;
         pendingMintCount?: number;
+        pendingOrdCount?: number;
       };
       setInfo(data.wallet);
       setPendingMintCount(data.pendingMintCount ?? 0);
+      setPendingOrdCount(data.pendingOrdCount ?? 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load wallet info");
     } finally {
@@ -215,7 +218,7 @@ export function useServerWalletInfo(authTokenGetter: () => Promise<string | null
     void refresh();
   }, [refresh]);
 
-  return { info, pendingMintCount, loading, error, refresh };
+  return { info, pendingMintCount, pendingOrdCount, loading, error, refresh };
 }
 
 /** Retry minting a PushDrop ticket for a registration whose previous attempt failed. */
@@ -233,4 +236,21 @@ export async function retryMintForRegistration(input: {
   }
   const data = (await res.json()) as { ticket: { tx_id: string; outpoint: string; stub: boolean } };
   return data.ticket;
+}
+
+/** Retry minting the 1sat-ord ticket for a registration whose previous attempt failed. */
+export async function retryOrdMintForRegistration(input: {
+  registrationId: string;
+  authToken: string;
+}): Promise<{ ord_txid: string; ord_outpoint: string; stub: boolean }> {
+  const res = await fetch(`/api/admin/registrations/${input.registrationId}/mint-ord`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${input.authToken}` },
+  });
+  if (!res.ok) {
+    const body = await safeJson(res);
+    throw new Error(body?.error ?? res.statusText);
+  }
+  const data = (await res.json()) as { ord: { ord_txid: string; ord_outpoint: string; stub: boolean } };
+  return data.ord;
 }
