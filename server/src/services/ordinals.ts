@@ -63,7 +63,15 @@ interface WalletClient {
       customInstructions?: string;
     }>;
     labels?: string[];
-    options?: { acceptDelayedBroadcast?: boolean };
+    options?: {
+      acceptDelayedBroadcast?: boolean;
+      /**
+       * BRC-100 default is true (privacy: outputs shuffled). We set false so
+       * the inscription always lands at vout 0, matching what we persist as
+       * `<txid>.0` in the DB and what the ord viewers index against.
+       */
+      randomizeOutputs?: boolean;
+    };
   }) => Promise<{ txid?: string }>;
 }
 
@@ -164,7 +172,15 @@ export async function mintTicketOrdinal(
       },
     ],
     labels: ["be-on-bsv", "ticket-ord", `event:${input.eventId}`],
-    options: { acceptDelayedBroadcast: false },
+    options: {
+      acceptDelayedBroadcast: false,
+      // BRC-100 default is true (shuffles outputs for privacy). We need
+      // the inscription at vout 0 so `<txid>.0` matches what we persist
+      // and what gorillapool / 1satordinals index. Without this, output
+      // order is randomised — observed live: inscription landed at vout 3
+      // and the indexers couldn't find it under `.0`.
+      randomizeOutputs: false,
+    },
   });
 
   if (!result.txid) {
