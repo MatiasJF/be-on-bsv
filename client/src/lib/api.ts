@@ -98,6 +98,7 @@ export const api = {
       } | null;
       whats_on_chain_url: string | null;
       ord_whats_on_chain_url: string | null;
+      reward_whats_on_chain_url: string | null;
       ticket_svg_url: string;
     }>(`/register/${id}`),
 
@@ -115,6 +116,18 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    claimChallenge: (registrationId: string) =>
+      request<{ nonce: string; expiresAt: string }>(
+        `/register/${registrationId}/claim-reward-challenge`,
+      ),
+    claimReward: (
+      registrationId: string,
+      body: { identityKey: string; nonce: string; signature: string },
+    ) =>
+      request<{ reward: { txid: string; sats: number; claimed_at: string } }>(
+        `/register/${registrationId}/claim-reward`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
   },
 
   // ── Admin ──

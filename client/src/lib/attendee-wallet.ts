@@ -89,18 +89,17 @@ function bytesToHex(bytes: number[]): string {
 }
 
 /**
- * Sign the cert-issuance request with the wallet's BRC-43 derived key.
- * The server reconstructs the same canonical message and verifies the
- * signature against the claimed identity key.
+ * Sign a cert-flow request (issue or claim) with the wallet's BRC-43
+ * derived key. The server reconstructs the same canonical message and
+ * verifies the signature against the claimed identity key.
  */
-export async function signIssueCertChallenge(input: {
+async function signWalletAction(input: {
   wallet: AttendeeWallet;
-  registrationId: string;
+  path: string;
   nonce: string;
 }): Promise<{ identityKey: string; signature: string }> {
-  const path = `/api/register/${input.registrationId}/issue-cert`;
   const message = canonicalJson({
-    path,
+    path: input.path,
     method: "POST",
     nonce: input.nonce,
     body: "",
@@ -118,6 +117,30 @@ export async function signIssueCertChallenge(input: {
     identityKey: String(publicKey),
     signature: bytesToHex(sig.signature as number[]),
   };
+}
+
+export function signIssueCertChallenge(input: {
+  wallet: AttendeeWallet;
+  registrationId: string;
+  nonce: string;
+}): Promise<{ identityKey: string; signature: string }> {
+  return signWalletAction({
+    wallet: input.wallet,
+    path: `/api/register/${input.registrationId}/issue-cert`,
+    nonce: input.nonce,
+  });
+}
+
+export function signClaimRewardChallenge(input: {
+  wallet: AttendeeWallet;
+  registrationId: string;
+  nonce: string;
+}): Promise<{ identityKey: string; signature: string }> {
+  return signWalletAction({
+    wallet: input.wallet,
+    path: `/api/register/${input.registrationId}/claim-reward`,
+    nonce: input.nonce,
+  });
 }
 
 /** Marketing URL for users who don't have a BSV wallet yet. */

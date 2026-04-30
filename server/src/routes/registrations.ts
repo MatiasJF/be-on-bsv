@@ -194,6 +194,7 @@ registrationsRouter.get(
       event,
       whats_on_chain_url: whatsOnChainTxUrl(reg.tx_id, env.BSV_NETWORK),
       ord_whats_on_chain_url: whatsOnChainTxUrl(reg.ord_txid, env.BSV_NETWORK),
+      reward_whats_on_chain_url: whatsOnChainTxUrl(reg.reward_txid, env.BSV_NETWORK),
       // Relative path: served by this same Express app, so the browser
       // resolves it against the page host. Avoids depending on
       // PUBLIC_APP_URL being correctly configured for the page to work.
