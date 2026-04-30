@@ -288,7 +288,7 @@ function parseEventBody(raw: Record<string, unknown>): Record<string, unknown> {
     }
   }
   // Strip empty strings → null so zod's .nullable() accepts them
-  for (const k of ["ends_at", "location", "meeting_url", "host_name", "host_bio", "host_avatar", "cover_url"]) {
+  for (const k of ["ends_at", "location", "meeting_url", "summary", "host_name", "host_bio", "host_avatar", "cover_url"]) {
     if (out[k] === "") out[k] = null;
   }
   return out;
