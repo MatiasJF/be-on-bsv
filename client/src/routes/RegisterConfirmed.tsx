@@ -457,13 +457,22 @@ function CertPanel(props: CertPanelProps) {
         </div>
       )}
       <div className="flex flex-wrap gap-3 items-center">
-        <button
-          onClick={connect}
-          disabled={walletLoading}
-          className="px-4 py-2 rounded-full bg-bsva-blue text-white font-display font-semibold text-sm hover:bg-bsva-cyan hover:text-bsva-navy transition-colors disabled:opacity-60"
-        >
-          {walletLoading ? "Connecting…" : "Connect wallet"}
-        </button>
+        {walletError?.includes("out of date") ? (
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-full bg-bsva-cyan text-bsva-navy font-display font-semibold text-sm hover:bg-white transition-colors"
+          >
+            Reload page
+          </button>
+        ) : (
+          <button
+            onClick={connect}
+            disabled={walletLoading}
+            className="px-4 py-2 rounded-full bg-bsva-blue text-white font-display font-semibold text-sm hover:bg-bsva-cyan hover:text-bsva-navy transition-colors disabled:opacity-60"
+          >
+            {walletLoading ? "Connecting…" : "Connect wallet"}
+          </button>
+        )}
         <a
           href={METANET_DESKTOP_INSTALL_URL}
           target="_blank"
