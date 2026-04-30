@@ -183,6 +183,7 @@ export function useServerWalletInfo(authTokenGetter: () => Promise<string | null
   const [info, setInfo] = useState<ServerWalletInfo | null>(null);
   const [pendingMintCount, setPendingMintCount] = useState<number>(0);
   const [pendingOrdCount, setPendingOrdCount] = useState<number>(0);
+  const [claimableRewardCount, setClaimableRewardCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -203,10 +204,12 @@ export function useServerWalletInfo(authTokenGetter: () => Promise<string | null
         wallet: ServerWalletInfo;
         pendingMintCount?: number;
         pendingOrdCount?: number;
+        claimableRewardCount?: number;
       };
       setInfo(data.wallet);
       setPendingMintCount(data.pendingMintCount ?? 0);
       setPendingOrdCount(data.pendingOrdCount ?? 0);
+      setClaimableRewardCount(data.claimableRewardCount ?? 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load wallet info");
     } finally {
@@ -218,7 +221,15 @@ export function useServerWalletInfo(authTokenGetter: () => Promise<string | null
     void refresh();
   }, [refresh]);
 
-  return { info, pendingMintCount, pendingOrdCount, loading, error, refresh };
+  return {
+    info,
+    pendingMintCount,
+    pendingOrdCount,
+    claimableRewardCount,
+    loading,
+    error,
+    refresh,
+  };
 }
 
 /** Retry minting a PushDrop ticket for a registration whose previous attempt failed. */

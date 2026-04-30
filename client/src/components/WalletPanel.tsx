@@ -29,6 +29,7 @@ export function WalletPanel() {
     info,
     pendingMintCount,
     pendingOrdCount,
+    claimableRewardCount,
     loading: infoLoading,
     error: infoError,
     refresh,
@@ -154,6 +155,19 @@ export function WalletPanel() {
               These registrations are missing the inscribed-SVG ord. Use{" "}
               <span className="text-bsva-cyan">Retry ord</span> on each row from the event's
               registrations list.
+            </div>
+          </div>
+        )}
+
+        {claimableRewardCount > 0 && (
+          <div className="mt-3 rounded-lg border border-yellow-300/30 bg-yellow-300/[0.06] p-3 text-sm font-body">
+            <div className="text-yellow-200 font-display font-semibold mb-1">
+              {claimableRewardCount} reward{claimableRewardCount === 1 ? "" : "s"} not yet claimed
+            </div>
+            <div className="text-white/70 leading-snug">
+              Cert holders haven't claimed their post-event sats yet. Each claim
+              spends from the server wallet — make sure the balance covers
+              outstanding rewards before they pile up.
             </div>
           </div>
         )}

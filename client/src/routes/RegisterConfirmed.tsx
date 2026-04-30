@@ -9,6 +9,7 @@ import { Button } from "../components/Button.js";
 import { formatEventDateTime } from "../lib/format.js";
 import {
   METANET_DESKTOP_INSTALL_URL,
+  signClaimRewardChallenge,
   signIssueCertChallenge,
   useAttendeeWallet,
 } from "../lib/attendee-wallet.js";
@@ -26,6 +27,7 @@ interface State {
   } | null;
   whats_on_chain_url: string | null;
   ord_whats_on_chain_url: string | null;
+  reward_whats_on_chain_url: string | null;
   ticket_svg_url: string;
 }
 
@@ -192,6 +194,8 @@ export function RegisterConfirmed() {
           eventStartsAt={event?.starts_at ?? null}
           rewardClaimedAt={registration.reward_claimed_at ?? null}
           rewardSats={registration.reward_sats ?? null}
+          rewardTxid={registration.reward_txid ?? null}
+          rewardWocUrl={state.reward_whats_on_chain_url}
           onIssued={(cert) => {
             // Update local state so the UI reflects success without a refetch.
             setState((s) =>
@@ -204,6 +208,22 @@ export function RegisterConfirmed() {
                       cert_serial: cert.serial,
                       cert_issued_at: cert.issuedAt,
                     },
+                  }
+                : s,
+            );
+          }}
+          onRewardClaimed={(reward) => {
+            setState((s) =>
+              s
+                ? {
+                    ...s,
+                    registration: {
+                      ...s.registration,
+                      reward_txid: reward.txid,
+                      reward_sats: reward.sats,
+                      reward_claimed_at: reward.claimed_at,
+                    },
+                    reward_whats_on_chain_url: `https://whatsonchain.com/tx/${reward.txid}`,
                   }
                 : s,
             );
@@ -257,7 +277,10 @@ interface CertPanelProps {
   eventStartsAt: string | null;
   rewardClaimedAt: string | null;
   rewardSats: number | null;
+  rewardTxid: string | null;
+  rewardWocUrl: string | null;
   onIssued: (cert: import("../lib/api.js").AttendeeCert) => void;
+  onRewardClaimed: (reward: { txid: string; sats: number; claimed_at: string }) => void;
 }
 
 function CertPanel(props: CertPanelProps) {
@@ -265,6 +288,8 @@ function CertPanel(props: CertPanelProps) {
     useAttendeeWallet();
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const onIssue = useCallback(async () => {
     if (!wallet) return;
@@ -287,6 +312,30 @@ function CertPanel(props: CertPanelProps) {
       setIssueError(e instanceof ApiError ? e.message : (e as Error).message ?? "issuance failed");
     } finally {
       setIssuing(false);
+    }
+  }, [wallet, props]);
+
+  const onClaim = useCallback(async () => {
+    if (!wallet) return;
+    setClaiming(true);
+    setClaimError(null);
+    try {
+      const { nonce } = await api.cert.claimChallenge(props.registrationId);
+      const { identityKey: pubkey, signature } = await signClaimRewardChallenge({
+        wallet,
+        registrationId: props.registrationId,
+        nonce,
+      });
+      const { reward } = await api.cert.claimReward(props.registrationId, {
+        identityKey: pubkey,
+        nonce,
+        signature,
+      });
+      props.onRewardClaimed(reward);
+    } catch (e) {
+      setClaimError(e instanceof ApiError ? e.message : (e as Error).message ?? "claim failed");
+    } finally {
+      setClaiming(false);
     }
   }, [wallet, props]);
 
@@ -317,17 +366,47 @@ function CertPanel(props: CertPanelProps) {
           </div>
         )}
         {props.rewardClaimedAt ? (
-          <div className="text-bsva-cyan font-display font-semibold text-sm">
-            ✓ {props.rewardSats ?? 0} sats sent to your wallet.
+          <div>
+            <div className="text-bsva-cyan font-display font-semibold text-sm mb-1">
+              ✓ {props.rewardSats ?? 0} sats sent to your wallet.
+            </div>
+            {props.rewardWocUrl && (
+              <a
+                href={props.rewardWocUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-bsva-cyan hover:text-white text-xs font-display font-semibold transition-colors"
+              >
+                View reward tx on WhatsOnChain ↗
+              </a>
+            )}
           </div>
         ) : ended ? (
-          <button
-            disabled
-            className="px-4 py-2 rounded-full bg-bsva-blue/40 text-white/70 font-display font-semibold text-sm cursor-not-allowed"
-            title="Reward claim wires up in Branch 3"
-          >
-            Claim reward (coming soon)
-          </button>
+          <div>
+            {claimError && (
+              <div className="text-red-300 font-body text-xs mb-2">{claimError}</div>
+            )}
+            <button
+              onClick={onClaim}
+              disabled={claiming || !wallet}
+              className="px-4 py-2 rounded-full bg-bsva-blue text-white font-display font-semibold text-sm hover:bg-bsva-cyan hover:text-bsva-navy transition-colors disabled:opacity-60"
+            >
+              {claiming
+                ? "Claiming…"
+                : !wallet
+                  ? "Connect wallet to claim"
+                  : `Claim ${props.rewardSats ?? 100} sats`}
+            </button>
+            {!wallet && !walletError && (
+              <button
+                onClick={connect}
+                disabled={walletLoading}
+                className="ml-3 text-bsva-cyan hover:text-white text-xs font-display font-semibold transition-colors"
+              >
+                {walletLoading ? "Connecting…" : "Connect"}
+              </button>
+            )}
+          </div>
         ) : (
           <div className="text-white/60 font-body text-xs">
             Reward will be claimable after the event ends.

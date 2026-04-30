@@ -24,12 +24,19 @@ adminRouter.get(
   "/wallet/info",
   requireAdmin,
   asyncHandler(async (_req, res) => {
-    const [info, pendingMintCount, pendingOrdCount] = await Promise.all([
-      getServerWalletInfo(),
-      countPendingByColumn("tx_id"),
-      countPendingByColumn("ord_txid"),
-    ]);
-    res.json({ wallet: info, pendingMintCount, pendingOrdCount });
+    const [info, pendingMintCount, pendingOrdCount, claimableRewardCount] =
+      await Promise.all([
+        getServerWalletInfo(),
+        countPendingByColumn("tx_id"),
+        countPendingByColumn("ord_txid"),
+        countClaimableRewards(),
+      ]);
+    res.json({
+      wallet: info,
+      pendingMintCount,
+      pendingOrdCount,
+      claimableRewardCount,
+    });
   }),
 );
 
@@ -40,6 +47,23 @@ async function countPendingByColumn(column: "tx_id" | "ord_txid"): Promise<numbe
     .select("id", { count: "exact", head: true })
     .is(column, null);
   if (error) return 0; // best-effort; don't fail the whole info call
+  return count ?? 0;
+}
+
+/**
+ * Count registrations whose attendees have a cert but haven't claimed yet.
+ * Surfaces "rewards waiting to be paid" as a forward-looking spend signal
+ * for the wallet panel — the actual claim is user-initiated, but if 50
+ * attendees are sitting on un-claimed rewards the operator wants to know
+ * the wallet should be funded for ~50 × REWARD_SATS.
+ */
+async function countClaimableRewards(): Promise<number> {
+  const { count, error } = await supabase
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .not("cert_serial", "is", null)
+    .is("reward_claimed_at", null);
+  if (error) return 0;
   return count ?? 0;
 }
 

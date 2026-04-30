@@ -2,12 +2,13 @@ import { randomBytes } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { supabase } from "../services/supabase.js";
-import { issueServerSignedAttendeeCert } from "../services/bsv.js";
+import { issueServerSignedAttendeeCert, sendReward } from "../services/bsv.js";
 import {
   buildSignedFetchMessage,
   verifyWalletSignature,
 } from "../services/attendee-certs.js";
 import { HttpError, asyncHandler } from "../middleware/error.js";
+import { env } from "../env.js";
 
 export const certsRouter: Router = Router();
 
@@ -32,6 +33,12 @@ export const certsRouter: Router = Router();
 interface PendingChallenge {
   nonce: string;
   registrationId: string;
+  /**
+   * Tags the action this nonce was issued for so a nonce minted for
+   * cert issuance cannot be replayed against the reward-claim endpoint
+   * (and vice versa).
+   */
+  action: "issue-cert" | "claim-reward";
   expiresAt: number;
 }
 const challenges = new Map<string, PendingChallenge>();
@@ -60,7 +67,12 @@ certsRouter.get(
     purgeExpiredChallenges();
     const nonce = randomBytes(16).toString("hex");
     const expiresAt = Date.now() + CHALLENGE_TTL_MS;
-    challenges.set(nonce, { nonce, registrationId: reg.id, expiresAt });
+    challenges.set(nonce, {
+      nonce,
+      registrationId: reg.id,
+      action: "issue-cert",
+      expiresAt,
+    });
 
     res.json({ nonce, expiresAt: new Date(expiresAt).toISOString() });
   }),
@@ -86,6 +98,9 @@ certsRouter.post(
     if (!challenge) throw new HttpError(400, "nonce_unknown_or_expired");
     if (challenge.registrationId !== req.params.id) {
       throw new HttpError(400, "nonce_registration_mismatch");
+    }
+    if (challenge.action !== "issue-cert") {
+      throw new HttpError(400, "nonce_action_mismatch");
     }
 
     const path = `/api/register/${req.params.id}/issue-cert`;
@@ -149,5 +164,151 @@ certsRouter.post(
     if (updErr) throw new HttpError(500, `persist: ${updErr.message}`);
 
     res.status(201).json({ cert });
+  }),
+);
+
+// ── GET /api/register/:id/claim-reward-challenge ─────────────
+// Issues a nonce for the reward-claim signed-fetch flow. Mirrors
+// /cert-challenge but checks (a) the cert exists and (b) the reward
+// hasn't already been paid before issuing, so a wallet without a cert
+// or an already-paid registration can't even start the flow.
+certsRouter.get(
+  "/register/:id/claim-reward-challenge",
+  asyncHandler(async (req, res) => {
+    const { data: reg, error } = await supabase
+      .from("registrations")
+      .select("id, cert_serial, reward_claimed_at")
+      .eq("id", req.params.id)
+      .maybeSingle();
+    if (error) throw new HttpError(500, error.message);
+    if (!reg) throw new HttpError(404, "registration_not_found");
+    if (!reg.cert_serial) throw new HttpError(409, "cert_not_issued");
+    if (reg.reward_claimed_at) throw new HttpError(409, "reward_already_claimed");
+
+    purgeExpiredChallenges();
+    const nonce = randomBytes(16).toString("hex");
+    const expiresAt = Date.now() + CHALLENGE_TTL_MS;
+    challenges.set(nonce, {
+      nonce,
+      registrationId: reg.id,
+      action: "claim-reward",
+      expiresAt,
+    });
+
+    res.json({ nonce, expiresAt: new Date(expiresAt).toISOString() });
+  }),
+);
+
+// ── POST /api/register/:id/claim-reward ──────────────────────
+// Verifies the cert holder controls the recorded identity key, checks
+// the event has ended and the reward hasn't been paid, sends N sats via
+// BRC-29 P2PKH to the wallet's identity key, and persists the claim.
+const claimRewardBody = z.object({
+  /** Hex-encoded wallet identity pubkey — must match the stored cert holder. */
+  identityKey: z.string().regex(/^[0-9a-f]{66}$/i, "must be 33-byte hex pubkey"),
+  nonce: z.string().min(16),
+  signature: z.string().regex(/^[0-9a-f]+$/i),
+});
+
+certsRouter.post(
+  "/register/:id/claim-reward",
+  asyncHandler(async (req, res) => {
+    const body = claimRewardBody.parse(req.body);
+
+    purgeExpiredChallenges();
+    const challenge = challenges.get(body.nonce);
+    if (!challenge) throw new HttpError(400, "nonce_unknown_or_expired");
+    if (challenge.registrationId !== req.params.id) {
+      throw new HttpError(400, "nonce_registration_mismatch");
+    }
+    if (challenge.action !== "claim-reward") {
+      throw new HttpError(400, "nonce_action_mismatch");
+    }
+
+    const path = `/api/register/${req.params.id}/claim-reward`;
+    const message = buildSignedFetchMessage({
+      path,
+      method: "POST",
+      nonce: body.nonce,
+      body: "",
+    });
+
+    const sigValid = verifyWalletSignature({
+      identityKey: body.identityKey,
+      signatureHex: body.signature,
+      message,
+    });
+    if (!sigValid) throw new HttpError(401, "signature_invalid");
+
+    challenges.delete(body.nonce);
+
+    // Re-pull registration + event under the same nonce window so we
+    // can't race a concurrent claim or hit a stale snapshot.
+    const { data: reg, error: regErr } = await supabase
+      .from("registrations")
+      .select(
+        "id, event_id, name, attendee_identity_key, cert_serial, reward_claimed_at",
+      )
+      .eq("id", req.params.id)
+      .maybeSingle();
+    if (regErr) throw new HttpError(500, regErr.message);
+    if (!reg) throw new HttpError(404, "registration_not_found");
+    if (!reg.cert_serial) throw new HttpError(409, "cert_not_issued");
+    if (reg.reward_claimed_at) throw new HttpError(409, "reward_already_claimed");
+    if (reg.attendee_identity_key !== body.identityKey) {
+      throw new HttpError(403, "identity_key_mismatch");
+    }
+
+    const { data: event, error: evErr } = await supabase
+      .from("events")
+      .select("title, starts_at, ends_at")
+      .eq("id", reg.event_id)
+      .maybeSingle();
+    if (evErr) throw new HttpError(500, evErr.message);
+    if (!event) throw new HttpError(404, "event_not_found");
+
+    // Reward unlocks after `ends_at` if set, else after `starts_at + 1h`
+    // as a fallback so events with no explicit end time still close out.
+    const now = Date.now();
+    const unlockAt = event.ends_at
+      ? new Date(event.ends_at).getTime()
+      : new Date(event.starts_at).getTime() + 60 * 60 * 1000;
+    if (now < unlockAt) {
+      throw new HttpError(425, "event_not_ended");
+    }
+
+    if (env.REWARD_SATS <= 0) {
+      throw new HttpError(503, "rewards_disabled");
+    }
+
+    let send;
+    try {
+      send = await sendReward({
+        identityKey: body.identityKey,
+        satoshis: env.REWARD_SATS,
+        description: `BE-on-BSV reward: ${event.title}`,
+      });
+    } catch (err) {
+      throw new HttpError(503, err instanceof Error ? err.message : "send failed");
+    }
+
+    const claimedAt = new Date().toISOString();
+    const { error: updErr } = await supabase
+      .from("registrations")
+      .update({
+        reward_txid: send.txid,
+        reward_sats: env.REWARD_SATS,
+        reward_claimed_at: claimedAt,
+      })
+      .eq("id", reg.id);
+    if (updErr) throw new HttpError(500, `persist: ${updErr.message}`);
+
+    res.json({
+      reward: {
+        txid: send.txid,
+        sats: env.REWARD_SATS,
+        claimed_at: claimedAt,
+      },
+    });
   }),
 );

@@ -199,6 +199,46 @@ export async function issueServerSignedAttendeeCert(input: {
 }
 
 /**
+ * Send a P2PKH payment to the recipient's identity-key address.
+ *
+ * Used for the post-event 100-sat reward payout. The recipient wallet
+ * scans for funds at its identity-key address; MetaNet Desktop and
+ * other BRC-100 wallets surface the incoming sats automatically.
+ *
+ * `wallet.send` is the simple-library helper that converts our `{to,
+ * satoshis}` spec into a `createAction` call with a P2PKH locking script
+ * (PublicKey.fromString(to).toAddress() under the hood). Already pins
+ * `randomizeOutputs:false` so the change index is stable.
+ */
+export async function sendReward(input: {
+  identityKey: string;
+  satoshis: number;
+  description: string;
+}): Promise<{ txid: string }> {
+  if (!env.BSV_ENABLED) {
+    throw new Error("BSV is disabled — set BSV_ENABLED=true and restart to send rewards");
+  }
+  if (input.satoshis <= 0) {
+    throw new Error("reward must be positive");
+  }
+  const wallet = await getWallet();
+  const result = await wallet.send({
+    description: input.description.slice(0, 128),
+    outputs: [
+      {
+        to: input.identityKey,
+        satoshis: input.satoshis,
+        description: input.description.slice(0, 128),
+      },
+    ],
+  });
+  if (!result?.txid) {
+    throw new Error("send returned no txid");
+  }
+  return { txid: result.txid };
+}
+
+/**
  * List all tickets in our basket. Useful for the admin dashboard
  * to reconcile failed mints, or to debug from the server console.
  */
