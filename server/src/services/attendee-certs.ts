@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { PublicKey, Signature, Utils } from "@bsv/sdk";
+import { ProtoWallet, Utils } from "@bsv/sdk";
 import { env } from "../env.js";
 
 /**
@@ -128,32 +128,47 @@ export async function issueAttendeeCert(input: IssueCertInput): Promise<Attendee
 
 /**
  * Verify a wallet-signed message against a claimed identity key.
- * Used to check the challenge response in `/issue-cert`.
+ * Used to check the challenge response in `/issue-cert` + `/claim-reward`.
  *
  * The wallet signs the canonical-JSON of `{ path, method, nonce, body }`
- * with its identity-key derived signing key (BRC-43). We reconstruct the
- * message bytes and verify against the claimed pubkey.
+ * via `client.createSignature({ protocolID, keyID, counterparty: "anyone" })`,
+ * which produces a signature with a key DERIVED from the identity key
+ * (not the identity key itself).
  *
- * Lifts APH's signed-fetch verification logic — same protocolID layout.
+ * The symmetric verifier is `ProtoWallet("anyone").verifySignature(...)`
+ * with `counterparty` set to the SIGNER's identity key — that re-derives
+ * the same expected pubkey on the verifier side and checks the signature
+ * against it. This is the BRC-43 verify path; we previously used a raw
+ * `PublicKey.verify` against the identity key, which always failed because
+ * the signing key was the derived one, not the identity key.
  */
 export const SIGNED_FETCH_PROTOCOL_ID: [0, string] = [0, "be on bsv attendee"];
 export const SIGNED_FETCH_KEY_ID = "1";
 
 export interface VerifySignedFetchInput {
-  /** Hex-encoded pubkey returned by the wallet (`x-wallet-pubkey` header). */
+  /** Hex-encoded identity pubkey returned by `wallet.getIdentityKey()`. */
   identityKey: string;
-  /** Hex-encoded DER signature (`x-wallet-signature` header). */
+  /** Hex-encoded DER signature from `client.createSignature`. */
   signatureHex: string;
   /** Canonical message that was signed. */
   message: string;
 }
 
-export function verifyWalletSignature(input: VerifySignedFetchInput): boolean {
+// Module-level singleton so we don't construct a new ProtoWallet per request.
+const verifierWallet = new ProtoWallet("anyone");
+
+export async function verifyWalletSignature(
+  input: VerifySignedFetchInput,
+): Promise<boolean> {
   try {
-    const pubkey = PublicKey.fromString(input.identityKey);
-    const signature = Signature.fromDER(Utils.toArray(input.signatureHex, "hex"));
-    const messageBytes = Utils.toArray(input.message, "utf8");
-    return pubkey.verify(messageBytes, signature);
+    const result = await verifierWallet.verifySignature({
+      data: Utils.toArray(input.message, "utf8"),
+      signature: Utils.toArray(input.signatureHex, "hex"),
+      protocolID: SIGNED_FETCH_PROTOCOL_ID,
+      keyID: SIGNED_FETCH_KEY_ID,
+      counterparty: input.identityKey,
+    });
+    return result.valid === true;
   } catch {
     return false;
   }
