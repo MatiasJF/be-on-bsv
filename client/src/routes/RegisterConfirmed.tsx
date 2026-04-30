@@ -28,6 +28,7 @@ interface State {
   whats_on_chain_url: string | null;
   ord_whats_on_chain_url: string | null;
   reward_whats_on_chain_url: string | null;
+  reward_sats_config: number;
   ticket_svg_url: string;
 }
 
@@ -194,6 +195,7 @@ export function RegisterConfirmed() {
           eventStartsAt={event?.starts_at ?? null}
           rewardClaimedAt={registration.reward_claimed_at ?? null}
           rewardSats={registration.reward_sats ?? null}
+          rewardSatsConfig={state.reward_sats_config}
           rewardTxid={registration.reward_txid ?? null}
           rewardWocUrl={state.reward_whats_on_chain_url}
           onIssued={(cert) => {
@@ -277,6 +279,7 @@ interface CertPanelProps {
   eventStartsAt: string | null;
   rewardClaimedAt: string | null;
   rewardSats: number | null;
+  rewardSatsConfig: number;
   rewardTxid: string | null;
   rewardWocUrl: string | null;
   onIssued: (cert: import("../lib/api.js").AttendeeCert) => void;
@@ -395,7 +398,7 @@ function CertPanel(props: CertPanelProps) {
                 ? "Claiming…"
                 : !wallet
                   ? "Connect wallet to claim"
-                  : `Claim ${props.rewardSats ?? 100} sats`}
+                  : `Claim ${props.rewardSatsConfig} sats`}
             </button>
             {!wallet && !walletError && (
               <button
@@ -444,12 +447,12 @@ function CertPanel(props: CertPanelProps) {
   return (
     <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-gradient-to-br from-bsva-blue/20 to-bsva-cyan/10 p-5 text-left">
       <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
-        Earn 100 sats
+        Earn {props.rewardSatsConfig} sats
       </div>
       <div className="text-white/85 font-body text-sm leading-relaxed mb-4">
         Connect your BSV browser wallet to receive a registration certificate.
-        After the event ends you'll be able to claim 100 sats from the server
-        wallet — straight to your wallet.
+        After the event ends you'll be able to claim {props.rewardSatsConfig}
+        {" "}sats from the server wallet — straight to your wallet.
       </div>
       {walletError && (
         <div className="text-red-300 font-body text-xs mb-3 leading-relaxed">

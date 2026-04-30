@@ -183,44 +183,55 @@ export function EventDetail() {
             </div>
 
             <div className="border-t border-white/10 pt-6">
-              <div className="text-white font-display font-semibold mb-4">Register</div>
-              <form onSubmit={onSubmit} className="space-y-3">
-                <Field
-                  label="Name"
-                  value={name}
-                  onChange={setName}
-                  required
-                  autoComplete="name"
-                />
-                <Field
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={setEmail}
-                  required
-                  autoComplete="email"
-                />
-                <Field
-                  label="Organization (optional)"
-                  value={organization}
-                  onChange={setOrganization}
-                  autoComplete="organization"
-                />
-                {formError && (
-                  <div className="text-sm text-red-300 font-body">{formError}</div>
-                )}
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="w-full"
-                  disabled={submitting}
-                >
-                  {submitting ? "Minting your ticket…" : "Register"}
-                </Button>
-                <p className="text-xs text-white/50 font-body text-center pt-2">
-                  By registering you'll get an on-chain ticket and a confirmation email.
-                </p>
-              </form>
+              {isPast(event) ? (
+                <div className="text-center">
+                  <div className="text-white/70 font-body text-sm">
+                    This session has already happened. Catch the recap on the
+                    homepage or browse upcoming sessions.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-white font-display font-semibold mb-4">Register</div>
+                  <form onSubmit={onSubmit} className="space-y-3">
+                    <Field
+                      label="Name"
+                      value={name}
+                      onChange={setName}
+                      required
+                      autoComplete="name"
+                    />
+                    <Field
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={setEmail}
+                      required
+                      autoComplete="email"
+                    />
+                    <Field
+                      label="Organization (optional)"
+                      value={organization}
+                      onChange={setOrganization}
+                      autoComplete="organization"
+                    />
+                    {formError && (
+                      <div className="text-sm text-red-300 font-body">{formError}</div>
+                    )}
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      className="w-full"
+                      disabled={submitting}
+                    >
+                      {submitting ? "Minting your ticket…" : "Register"}
+                    </Button>
+                    <p className="text-xs text-white/50 font-body text-center pt-2">
+                      By registering you'll get an on-chain ticket and a confirmation email.
+                    </p>
+                  </form>
+                </>
+              )}
             </div>
           </GlassCard>
         </aside>
@@ -236,6 +247,14 @@ interface FieldProps {
   type?: string;
   required?: boolean;
   autoComplete?: string;
+}
+
+function isPast(event: Event): boolean {
+  // Use ends_at if set, else starts_at as the cutoff. Events in the past
+  // can't accept new registrations from the UI; the server enforces this
+  // too via /api/register so the gate isn't UI-only.
+  const cutoff = event.ends_at ?? event.starts_at;
+  return new Date(cutoff) < new Date();
 }
 
 function speakersHeading(list: EventSpeaker[]): string {

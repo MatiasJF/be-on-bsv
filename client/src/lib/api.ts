@@ -99,6 +99,7 @@ export const api = {
       whats_on_chain_url: string | null;
       ord_whats_on_chain_url: string | null;
       reward_whats_on_chain_url: string | null;
+      reward_sats_config: number;
       ticket_svg_url: string;
     }>(`/register/${id}`),
 

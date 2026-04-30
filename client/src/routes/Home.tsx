@@ -66,9 +66,6 @@ export function Home() {
             <h2 className="font-display font-semibold text-3xl sm:text-4xl text-white mb-2">
               Upcoming sessions
             </h2>
-            <p className="text-white/60 font-body">
-              Pick a slot, register in 30 seconds, get a verifiable on-chain ticket.
-            </p>
           </div>
           <div className="inline-flex glass rounded-full p-1">
             {(["cards", "month", "week"] as const).map((opt) => (
