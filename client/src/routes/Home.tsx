@@ -49,11 +49,11 @@ export function Home() {
               <Button variant="primary">Browse upcoming events</Button>
             </a>
             <a
-              href="https://bsvassociation.org/bsv-browser"
+              href="https://hub.bsvblockchain.org/demos-and-onboardings/onboardings/onboarding-catalog/metanet-desktop-mainnet"
               target="_blank"
               rel="noreferrer"
             >
-              <Button variant="secondary">Download BSV Browser ↗</Button>
+              <Button variant="secondary">Install MetaNet Desktop ↗</Button>
             </a>
           </div>
         </div>

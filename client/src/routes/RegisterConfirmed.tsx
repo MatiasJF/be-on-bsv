@@ -235,11 +235,11 @@ export function RegisterConfirmed() {
             <Button variant="secondary">← Back to events</Button>
           </Link>
           <a
-            href="https://bsvassociation.org/bsv-browser"
+            href={METANET_DESKTOP_INSTALL_URL}
             target="_blank"
             rel="noreferrer"
           >
-            <Button variant="primary">Download BSV Browser ↗</Button>
+            <Button variant="primary">Install MetaNet Desktop ↗</Button>
           </a>
         </div>
       </GlassCard>
