@@ -49,9 +49,12 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
               {event.is_virtual ? "Online" : event.location ?? ""}
             </div>
 
-            {/* Description — exactly 2 lines reserved */}
+            {/* Summary — exactly 2 lines reserved. Falls back to a
+                truncated description for legacy rows that don't have a
+                summary set yet. Description may be HTML; strip tags
+                before showing a teaser. */}
             <p className="text-white/70 text-sm font-body line-clamp-2 mb-4 min-h-[2.5rem]">
-              {event.description}
+              {event.summary ?? stripTags(event.description).slice(0, 140)}
             </p>
 
             {/* Tags — pinned to the bottom of the card via mt-auto */}
@@ -65,6 +68,11 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
       </Link>
     </motion.div>
   );
+}
+
+/** Cheap HTML-to-text used to teaser-truncate Tiptap-formatted descriptions. */
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function CoverPlaceholder({ title }: { title: string }) {

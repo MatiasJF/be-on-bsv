@@ -16,6 +16,12 @@ import { EventSpeakerSchema } from "./speakers.js";
 export const EventSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1).max(200),
+  /**
+   * Short tagline shown on event cards. Plain text, ≤ 200 chars.
+   * Falls back to a truncated `description` for legacy rows where this
+   * is null (UI handles the fallback so the schema stays optional).
+   */
+  summary: z.string().max(200).nullable().optional(),
   description: z.string().min(1),
   starts_at: z.string().datetime({ offset: true }),
   ends_at: z.string().datetime({ offset: true }).nullable().optional(),
@@ -54,6 +60,7 @@ export type Event = z.infer<typeof EventSchema>;
  */
 export const EventInputSchema = z.object({
   title: z.string().min(1).max(200),
+  summary: z.string().max(200).nullable().optional(),
   description: z.string().min(1),
   starts_at: z.string().datetime({ offset: true }),
   ends_at: z.string().datetime({ offset: true }).nullable().optional(),
