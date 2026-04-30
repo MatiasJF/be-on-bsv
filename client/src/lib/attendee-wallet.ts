@@ -41,14 +41,19 @@ export function useAttendeeWallet() {
       if (typeof createWallet !== "function") {
         throw new Error("@bsv/simple/browser did not export createWallet");
       }
+      // The BrowserWallet returned by createWallet() extends WalletCore.
+      // Identity key is exposed synchronously via `getIdentityKey()`.
+      // BRC-100 calls (createSignature, getPublicKey for derived keys) live
+      // on the underlying client returned by `wallet.getClient()`.
       const wallet = await createWallet();
-      const { publicKey } = await wallet.getPublicKey({ identityKey: true });
-      setState({
-        wallet,
-        identityKey: String(publicKey),
-        loading: false,
-        error: null,
-      });
+      const identityKey =
+        typeof wallet.getIdentityKey === "function"
+          ? String(wallet.getIdentityKey())
+          : null;
+      if (!identityKey) {
+        throw new Error("wallet did not expose getIdentityKey()");
+      }
+      setState({ wallet, identityKey, loading: false, error: null });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "wallet connection failed";
       // Stale dynamic-import error: the browser cached an `index.html` that
@@ -121,8 +126,14 @@ async function signWalletAction(input: {
     body: "",
   });
 
-  const { publicKey } = await input.wallet.getPublicKey({ identityKey: true });
-  const sig = await input.wallet.createSignature({
+  // Identity key off the simple wrapper (sync); signing goes through the
+  // underlying BRC-100 client. Both are stable surfaces of @bsv/simple's
+  // BrowserWallet — the wrapper proxies `getIdentityKey()` itself but
+  // delegates BRC-100 method calls (createSignature, getPublicKey for
+  // derived keys, …) to the inner WalletInterface.
+  const identityKey = String(input.wallet.getIdentityKey());
+  const client = input.wallet.getClient();
+  const sig = await client.createSignature({
     data: utf8ToBytes(message),
     protocolID: PROTOCOL_ID,
     keyID: KEY_ID,
@@ -130,7 +141,7 @@ async function signWalletAction(input: {
   });
 
   return {
-    identityKey: String(publicKey),
+    identityKey,
     signature: bytesToHex(sig.signature as number[]),
   };
 }
