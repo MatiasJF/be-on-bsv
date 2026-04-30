@@ -11,6 +11,7 @@ import { api, ApiError } from "../lib/api.js";
 import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
 import { Tag } from "../components/Tag.js";
+import { RichTextRender } from "../components/RichTextRender.js";
 import { formatEventDateTime, relativeWhen } from "../lib/format.js";
 
 export function EventDetail() {
@@ -118,10 +119,8 @@ export function EventDetail() {
               <Tag key={t} label={t} />
             ))}
           </div>
-          <div className="prose prose-invert max-w-none mb-8">
-            <p className="text-white/80 font-body text-lg leading-relaxed whitespace-pre-line">
-              {event.description}
-            </p>
+          <div className="mb-8">
+            <RichTextRender html={event.description} />
           </div>
 
           {event.speakers.length > 0 && (

@@ -5,6 +5,7 @@ import type { EventInput, EventSpeaker } from "@be-on-bsv/shared";
 import { api, ApiError } from "../lib/api.js";
 import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
+import { RichTextEditor } from "../components/RichTextEditor.js";
 
 interface AdminEventFormProps {
   mode: "create" | "edit";
@@ -152,12 +153,10 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
           </Field>
 
           <Field label="Description" required>
-            <textarea
+            <RichTextEditor
               value={form.description}
-              onChange={(e) => update("description", e.target.value)}
-              rows={5}
-              required
-              className={inputCls}
+              onChange={(html) => update("description", html)}
+              placeholder="Tell people what they'll learn…"
             />
           </Field>
 
