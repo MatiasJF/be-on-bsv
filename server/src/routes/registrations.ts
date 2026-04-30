@@ -8,7 +8,6 @@ import { renderTicketSvg, svgToBytes } from "../services/ticket-renderer.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { HttpError, asyncHandler } from "../middleware/error.js";
 import { whatsOnChainTxUrl } from "../lib/whatsonchain.js";
-import { ordContentUrl, ordGalleryUrl } from "../lib/ord-viewer.js";
 import { env } from "../env.js";
 
 export const registrationsRouter: Router = Router();
@@ -131,13 +130,12 @@ registrationsRouter.post(
     // 5. Render QR + send confirmation email. Same isolation: failure here
     //    doesn't fail the request — registration is already persisted.
     try {
-      // The QR in the email points to the ord viewer when available so a
-      // phone scan opens the on-chain SVG directly. Falls through:
-      //   ord viewer → WoC tx → confirmation page.
-      const ordViewerUrl = ordContentUrl(ord?.ord_outpoint, env.BSV_NETWORK);
-      const wocUrl = whatsOnChainTxUrl(ticket?.tx_id, env.BSV_NETWORK);
+      // The QR encodes the WhatsOnChain tx URL (ord tx preferred, then
+      // PushDrop, then the confirmation page) so a phone scan opens the
+      // on-chain proof on the only viewer surface we expose.
       const ordWocUrl = whatsOnChainTxUrl(ord?.ord_txid, env.BSV_NETWORK);
-      const qrPayload = ordViewerUrl ?? wocUrl ?? confirmationUrl;
+      const wocUrl = whatsOnChainTxUrl(ticket?.tx_id, env.BSV_NETWORK);
+      const qrPayload = ordWocUrl ?? wocUrl ?? confirmationUrl;
       const qrPngDataUrl = await renderQrPngDataUrl(qrPayload);
 
       await sendRegistrationEmail({
@@ -152,8 +150,6 @@ registrationsRouter.post(
         qrPngDataUrl,
         confirmationUrl,
         whatsOnChainUrl: ordWocUrl ?? wocUrl,
-        ordViewerUrl,
-        ordGalleryUrl: ordGalleryUrl(ord?.ord_outpoint, env.BSV_NETWORK),
       });
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -197,8 +193,6 @@ registrationsRouter.get(
       event,
       whats_on_chain_url: whatsOnChainTxUrl(reg.tx_id, env.BSV_NETWORK),
       ord_whats_on_chain_url: whatsOnChainTxUrl(reg.ord_txid, env.BSV_NETWORK),
-      ord_viewer_url: ordContentUrl(reg.ord_outpoint, env.BSV_NETWORK),
-      ord_gallery_url: ordGalleryUrl(reg.ord_outpoint, env.BSV_NETWORK),
       // Relative path: served by this same Express app, so the browser
       // resolves it against the page host. Avoids depending on
       // PUBLIC_APP_URL being correctly configured for the page to work.
