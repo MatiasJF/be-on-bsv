@@ -4,7 +4,6 @@ import { useLocation } from "react-router-dom";
 import { Nav } from "./components/Nav.js";
 import { Footer } from "./components/Footer.js";
 import { Home } from "./routes/Home.js";
-import { PastEvents } from "./routes/PastEvents.js";
 import { EventDetail } from "./routes/EventDetail.js";
 import { RegisterConfirmed } from "./routes/RegisterConfirmed.js";
 import { AdminGate } from "./routes/AdminGate.js";
@@ -23,7 +22,6 @@ export default function App() {
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<Home />} />
-            <Route path="/past" element={<PastEvents />} />
             <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/r/:id" element={<RegisterConfirmed />} />
             {/* Magic-link entry stays open so invited admins can sign in

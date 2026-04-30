@@ -46,18 +46,6 @@ export function Nav() {
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          <NavLink
-            to="/past"
-            className={({ isActive }) =>
-              `px-3 py-2 rounded-full text-sm font-body transition-colors ${
-                isActive
-                  ? "text-bsva-blue"
-                  : "text-bsva-soft/70 hover:text-bsva-navy"
-              }`
-            }
-          >
-            Past
-          </NavLink>
           <a
             href="https://bsvassociation.org"
             target="_blank"
