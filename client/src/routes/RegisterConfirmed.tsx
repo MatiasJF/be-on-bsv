@@ -20,8 +20,6 @@ interface State {
   } | null;
   whats_on_chain_url: string | null;
   ord_whats_on_chain_url: string | null;
-  ord_viewer_url: string | null;
-  ord_gallery_url: string | null;
   ticket_svg_url: string;
 }
 
@@ -103,10 +101,7 @@ export function RegisterConfirmed() {
           </div>
         )}
 
-        <TicketPreview
-          ordViewerUrl={state.ord_viewer_url}
-          fallbackUrl={state.ticket_svg_url}
-        />
+        <TicketPreview src={state.ticket_svg_url} />
         {qrSvg && (
           <details className="mb-6 text-white/60 font-body text-xs">
             <summary className="cursor-pointer text-bsva-cyan hover:text-white transition-colors">
@@ -135,28 +130,6 @@ export function RegisterConfirmed() {
                 View on WhatsOnChain ↗
               </a>
             )}
-            <div className="flex flex-wrap gap-3 mt-3 text-xs font-display font-semibold">
-              {state.ord_viewer_url && (
-                <a
-                  href={state.ord_viewer_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-bsva-cyan hover:text-white transition-colors"
-                >
-                  Open inscribed SVG ↗
-                </a>
-              )}
-              {state.ord_gallery_url && (
-                <a
-                  href={state.ord_gallery_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-bsva-cyan hover:text-white transition-colors"
-                >
-                  View on 1satordinals ↗
-                </a>
-              )}
-            </div>
           </div>
         ) : (
           <div className="text-white/60 font-body text-sm mb-4">
@@ -222,40 +195,15 @@ export function RegisterConfirmed() {
 }
 
 /**
- * Inline ticket preview. Prefers the on-chain ord content URL (gorillapool
- * serves the inscription with the right Content-Type so the browser renders
- * it as an SVG). Falls back to the local server-rendered endpoint when the
- * ord isn't ready yet, or when the chain viewer is unreachable from this
- * client. Both paths point at the same artifact.
+ * Inline ticket preview, sourced from the local server-rendered SVG
+ * endpoint. The same SVG is also inscribed as a 1sat ord on chain — if
+ * users want to verify the on-chain artifact, the "View on WhatsOnChain"
+ * button below the preview links to the tx where WoC renders it inline.
  */
-function TicketPreview({
-  ordViewerUrl,
-  fallbackUrl,
-}: {
-  ordViewerUrl: string | null;
-  fallbackUrl: string;
-}) {
-  const [src, setSrc] = useState<string>(ordViewerUrl ?? fallbackUrl);
-  const [triedFallback, setTriedFallback] = useState(false);
-
-  useEffect(() => {
-    setSrc(ordViewerUrl ?? fallbackUrl);
-    setTriedFallback(false);
-  }, [ordViewerUrl, fallbackUrl]);
-
+function TicketPreview({ src }: { src: string }) {
   return (
     <div className="mx-auto mb-6 max-w-md rounded-2xl overflow-hidden border border-white/10 bg-white/[0.02]">
-      <img
-        src={src}
-        alt="Your BE-on-BSV ticket"
-        className="block w-full h-auto"
-        onError={() => {
-          if (!triedFallback && src !== fallbackUrl) {
-            setTriedFallback(true);
-            setSrc(fallbackUrl);
-          }
-        }}
-      />
+      <img src={src} alt="Your BE-on-BSV ticket" className="block w-full h-auto" />
     </div>
   );
 }
