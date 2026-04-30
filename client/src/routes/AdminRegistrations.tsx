@@ -119,17 +119,17 @@ export function AdminRegistrations() {
       exit={{ opacity: 0 }}
       className="max-w-6xl mx-auto px-6 pt-12 pb-24"
     >
-      <Link to="/admin" className="text-bsva-cyan hover:underline font-body text-sm mb-4 inline-block">
+      <Link to="/admin" className="text-bsva-blue hover:underline font-body text-sm mb-4 inline-block">
         ← Back to dashboard
       </Link>
 
       <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
         <div>
-          <h1 className="font-display font-semibold text-3xl text-white">
+          <h1 className="font-display font-semibold text-3xl text-bsva-navy">
             {event?.title ?? "Registrations"}
           </h1>
           {event && (
-            <div className="text-white/60 font-body text-sm">
+            <div className="text-bsva-soft/60 font-body text-sm">
               {formatEventDateTime(event.starts_at)}
             </div>
           )}
@@ -139,12 +139,12 @@ export function AdminRegistrations() {
         </Button>
       </div>
 
-      {error && <GlassCard className="p-6 text-white/80 mb-6">{error}</GlassCard>}
+      {error && <GlassCard className="p-6 text-bsva-soft/80 mb-6">{error}</GlassCard>}
 
       <GlassCard className="overflow-hidden">
         <table className="w-full text-sm font-body">
           <thead>
-            <tr className="text-left text-white/50 text-xs uppercase tracking-wider border-b border-white/10">
+            <tr className="text-left text-bsva-soft/50 text-xs uppercase tracking-wider border-b border-bsva-grey">
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Organization</th>
@@ -154,21 +154,21 @@ export function AdminRegistrations() {
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
-          <tbody className="text-white/85">
+          <tbody className="text-bsva-soft/80">
             {regs?.map((r) => (
               <tr key={r.id} className="border-b border-white/5 hover:bg-white/[0.03]">
                 <td className="px-4 py-3 font-display font-semibold">{r.name}</td>
                 <td className="px-4 py-3">{r.email}</td>
-                <td className="px-4 py-3 text-white/60">{r.organization ?? "—"}</td>
-                <td className="px-4 py-3 text-white/60">
+                <td className="px-4 py-3 text-bsva-soft/60">{r.organization ?? "—"}</td>
+                <td className="px-4 py-3 text-bsva-soft/60">
                   {new Date(r.created_at).toLocaleString()}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-bsva-cyan/80 truncate max-w-[180px]">
+                <td className="px-4 py-3 font-mono text-xs text-bsva-blue/80 truncate max-w-[180px]">
                   {r.tx_id ?? (
                     <span className="text-yellow-300 font-body not-italic">pending mint</span>
                   )}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-bsva-cyan/80 truncate max-w-[180px]">
+                <td className="px-4 py-3 font-mono text-xs text-bsva-blue/80 truncate max-w-[180px]">
                   {r.ord_txid ?? (
                     <span className="text-yellow-300 font-body not-italic">pending ord</span>
                   )}
@@ -178,7 +178,7 @@ export function AdminRegistrations() {
                     <button
                       onClick={() => onRetry(r.id)}
                       disabled={retrying === r.id}
-                      className="text-xs font-display font-semibold text-bsva-cyan hover:text-white disabled:opacity-50"
+                      className="text-xs font-display font-semibold text-bsva-blue hover:text-bsva-navy disabled:opacity-50"
                     >
                       {retrying === r.id ? "Retrying…" : "Retry mint"}
                     </button>
@@ -187,7 +187,7 @@ export function AdminRegistrations() {
                     <button
                       onClick={() => onRetryOrd(r.id)}
                       disabled={retryingOrd === r.id}
-                      className="text-xs font-display font-semibold text-bsva-cyan hover:text-white disabled:opacity-50"
+                      className="text-xs font-display font-semibold text-bsva-blue hover:text-bsva-navy disabled:opacity-50"
                     >
                       {retryingOrd === r.id ? "Retrying ord…" : "Retry ord"}
                     </button>
@@ -204,7 +204,7 @@ export function AdminRegistrations() {
             ))}
             {regs && regs.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-white/60">
+                <td colSpan={7} className="text-center py-10 text-bsva-soft/60">
                   No registrations yet.
                 </td>
               </tr>

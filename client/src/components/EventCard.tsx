@@ -33,12 +33,12 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
           {/* Content — flex column with reserved heights so every card lines up */}
           <div className="p-6 flex flex-col flex-1">
             {/* Title — exactly 2 lines reserved */}
-            <h3 className="font-display font-semibold text-xl text-white leading-snug mb-2 line-clamp-2 min-h-[3.25rem]">
+            <h3 className="font-display font-semibold text-xl text-bsva-navy leading-snug mb-2 line-clamp-2 min-h-[3.25rem]">
               {event.title}
             </h3>
 
             {/* Location — exactly 1 line reserved (renders empty when missing so the row stays) */}
-            <div className="text-white/60 text-sm font-body mb-3 truncate min-h-[1.25rem]">
+            <div className="text-bsva-soft/60 text-sm font-body mb-3 truncate min-h-[1.25rem]">
               {event.is_virtual ? "Online" : event.location ?? ""}
             </div>
 
