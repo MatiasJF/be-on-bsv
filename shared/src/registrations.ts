@@ -13,6 +13,15 @@ export const RegistrationSchema = z.object({
   ord_txid: z.string().nullable().optional(),
   ord_outpoint: z.string().nullable().optional(),
   ord_metadata_sha256: z.string().nullable().optional(),
+  /** Wallet identity key the attendee connected. Null = wallet never connected. */
+  attendee_identity_key: z.string().nullable().optional(),
+  /** Serial of the cert issued to the attendee's wallet. */
+  cert_serial: z.string().nullable().optional(),
+  cert_issued_at: z.string().datetime({ offset: true }).nullable().optional(),
+  /** Sats sent on reward claim (always REWARD_SATS at claim time). */
+  reward_sats: z.number().int().nullable().optional(),
+  reward_txid: z.string().nullable().optional(),
+  reward_claimed_at: z.string().datetime({ offset: true }).nullable().optional(),
   created_at: z.string().datetime({ offset: true }),
 });
 

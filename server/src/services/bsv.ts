@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { env } from "../env.js";
 import { mintTicketOrdinal, type MintOrdResult } from "./ordinals.js";
+import { issueAttendeeCert, type AttendeeCert } from "./attendee-certs.js";
 
 /**
  * BSV "ticket" service.
@@ -160,6 +161,40 @@ export async function mintTicketOrd(input: {
   return mintTicketOrdinal(input, async () => {
     const wallet = await getWallet();
     return { getClient: () => wallet.getClient() };
+  });
+}
+
+/**
+ * Issue a signed attendee certificate using the server wallet's BRC-43
+ * derived signing key. Wrapper that supplies the cached wallet's client
+ * to `attendee-certs.ts` so the route layer doesn't need to know about
+ * wallet construction.
+ *
+ * Throws when BSV mode is disabled — the cert needs the server's identity
+ * key to sign, and the stub key wouldn't be cryptographically meaningful.
+ * The route handler surfaces this as a 503 so the UI can prompt the user
+ * to wait until the operator turns on real signing.
+ */
+export async function issueServerSignedAttendeeCert(input: {
+  eventId: string;
+  registrationId: string;
+  eventTitle: string;
+  name: string;
+  email: string;
+  attendeeIdentityKey: string;
+}): Promise<AttendeeCert> {
+  if (!env.BSV_ENABLED) {
+    throw new Error("BSV is disabled — set BSV_ENABLED=true and restart to issue real certs");
+  }
+  const wallet = await getWallet();
+  return issueAttendeeCert({
+    wallet: wallet.getClient(),
+    eventId: input.eventId,
+    registrationId: input.registrationId,
+    eventTitle: input.eventTitle,
+    name: input.name,
+    email: input.email,
+    attendeeIdentityKey: input.attendeeIdentityKey,
   });
 }
 

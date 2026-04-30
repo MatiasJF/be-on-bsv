@@ -49,7 +49,14 @@ const EnvSchema = z.object({
    * panel surfaces a warning. Defaults to ~100 tickets' worth — tune
    * based on your expected registration rate.
    */
-  BSV_LOW_BALANCE_SATS: z.coerce.number().int().min(0).default(100),
+  BSV_LOW_BALANCE_SATS: z.coerce.number().int().min(0).default(5000),
+
+  /**
+   * Sats sent to the attendee's wallet when they claim their post-event
+   * reward. Set to 0 to disable the reward path while keeping the cert
+   * flow live (CTA still works; claim button shows "rewards disabled").
+   */
+  REWARD_SATS: z.coerce.number().int().min(0).default(100),
 
   // Email
   RESEND_API_KEY: z.string().optional(),

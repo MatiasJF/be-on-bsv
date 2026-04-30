@@ -9,6 +9,22 @@ import { getAccessToken } from "./supabase.js";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
+/** Server-issued attendee certificate (signed JSON, off-chain). */
+export interface AttendeeCert {
+  v: 1;
+  schema: "be-on-bsv-attendee/v1";
+  eventId: string;
+  registrationId: string;
+  eventTitle: string;
+  name: string;
+  emailHash: string;
+  attendeeIdentityKey: string;
+  issuerIdentityKey: string;
+  issuedAt: string;
+  serial: string;
+  signature: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -74,6 +90,7 @@ export const api = {
       event: {
         title: string;
         starts_at: string;
+        ends_at: string | null;
         location: string | null;
         is_virtual: boolean;
         meeting_url: string | null;
@@ -83,6 +100,22 @@ export const api = {
       ord_whats_on_chain_url: string | null;
       ticket_svg_url: string;
     }>(`/register/${id}`),
+
+  // ── Attendee cert (public confirmation page) ──
+  cert: {
+    challenge: (registrationId: string) =>
+      request<{ nonce: string; expiresAt: string }>(
+        `/register/${registrationId}/cert-challenge`,
+      ),
+    issue: (
+      registrationId: string,
+      body: { identityKey: string; nonce: string; signature: string },
+    ) =>
+      request<{ cert: AttendeeCert }>(`/register/${registrationId}/issue-cert`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
 
   // ── Admin ──
   admin: {

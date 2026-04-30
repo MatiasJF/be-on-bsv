@@ -150,6 +150,7 @@ registrationsRouter.post(
         qrPngDataUrl,
         confirmationUrl,
         whatsOnChainUrl: ordWocUrl ?? wocUrl,
+        rewardSats: env.REWARD_SATS,
       });
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -174,7 +175,7 @@ registrationsRouter.get(
     const { data: reg, error } = await supabase
       .from("registrations")
       .select(
-        "id, event_id, name, email, organization, tx_id, outpoint, ord_txid, ord_outpoint, ord_metadata_sha256, created_at",
+        "id, event_id, name, email, organization, tx_id, outpoint, ord_txid, ord_outpoint, ord_metadata_sha256, attendee_identity_key, cert_serial, cert_issued_at, reward_sats, reward_txid, reward_claimed_at, created_at",
       )
       .eq("id", req.params.id)
       .maybeSingle();
@@ -184,7 +185,7 @@ registrationsRouter.get(
 
     const { data: event } = await supabase
       .from("events")
-      .select("title, starts_at, location, is_virtual, meeting_url, cover_url")
+      .select("title, starts_at, ends_at, location, is_virtual, meeting_url, cover_url")
       .eq("id", reg.event_id)
       .maybeSingle();
 
