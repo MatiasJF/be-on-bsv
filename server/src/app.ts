@@ -60,9 +60,24 @@ export function createApp(): Express {
 
     app.use(
       express.static(clientDist, {
-        // Long-cache immutable hashed assets. index.html + fonts are
-        // served with default (no-cache) headers.
-        maxAge: "1h",
+        // Per-file Cache-Control: hashed bundles are immutable so they get
+        // a 1-year cache; index.html must always be re-fetched so users
+        // don't end up with a stale entry that references a chunk that
+        // was replaced by the latest deploy ("Failed to fetch dynamically
+        // imported module" on /assets/browser-<old-hash>.js).
+        setHeaders: (res, filePath) => {
+          const lower = filePath.toLowerCase();
+          if (lower.endsWith("/index.html") || lower.endsWith(`${path.sep}index.html`)) {
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
+          } else if (lower.includes(`${path.sep}assets${path.sep}`) || lower.includes("/assets/")) {
+            // Vite/Rollup outputs hashed filenames here — safe to long-cache.
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          } else if (lower.includes(`${path.sep}fonts${path.sep}`) || lower.includes("/fonts/")) {
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          } else {
+            res.setHeader("Cache-Control", "public, max-age=3600");
+          }
+        },
       }),
     );
 

@@ -51,6 +51,22 @@ export function useAttendeeWallet() {
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "wallet connection failed";
+      // Stale dynamic-import error: the browser cached an `index.html` that
+      // references a chunk hash from a previous deploy and that chunk is
+      // gone. Reload the page to pick up the current entry point.
+      const stale = /failed to fetch dynamically imported module|importing.*chunk|loading chunk/i.test(
+        msg,
+      );
+      if (stale) {
+        setState({
+          wallet: null,
+          identityKey: null,
+          loading: false,
+          error:
+            "This page is out of date — the site was updated since you opened it. Reload to continue.",
+        });
+        return;
+      }
       const friendly = /not\s*found|no wallet|undefined|window/i.test(msg)
         ? "No BSV browser wallet detected. Install MetaNet Desktop and reload this page."
         : msg;
