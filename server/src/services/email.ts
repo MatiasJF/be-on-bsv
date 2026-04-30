@@ -18,6 +18,8 @@ export interface RegistrationEmailInput {
   confirmationUrl: string;
   /** WhatsOnChain tx URL — null when the mint stubbed or failed. */
   whatsOnChainUrl: string | null;
+  /** Reward sats — surfaces a "Connect wallet for N sats" CTA when > 0. */
+  rewardSats: number;
 }
 
 /**
@@ -129,6 +131,18 @@ function renderHtml(input: RegistrationEmailInput): string {
             <div style="text-align:center;margin:8px 0 0;font-size:12px;color:#6b6b75;">
               Lost this email? <a href="${escapeAttr(input.confirmationUrl)}" style="color:${blue};text-decoration:none;">Reload your ticket</a>.
             </div>
+            ${
+              input.rewardSats > 0
+                ? `<div style="margin:24px 0 0;padding:16px;border-radius:12px;background:${cyan}1A;border:1px solid ${cyan};text-align:center;">
+                     <div style="font-size:13px;color:${navy};font-weight:700;margin-bottom:4px;">Want ${input.rewardSats} sats?</div>
+                     <div style="font-size:12px;color:${soft};line-height:1.5;">
+                       Connect your BSV browser wallet on
+                       <a href="${escapeAttr(input.confirmationUrl)}" style="color:${blue};text-decoration:none;">your confirmation page</a>
+                       to claim a registration certificate. After the event you can collect ${input.rewardSats} sats from the server wallet.
+                     </div>
+                   </div>`
+                : ""
+            }
             <p style="margin:32px 0 0;font-size:12px;color:#6b6b75;text-align:center;">
               Together <span style="color:${cyan};">▶</span> Towards Better
             </p>

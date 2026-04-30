@@ -6,6 +6,7 @@ import { eventsRouter } from "./routes/events.js";
 import { registrationsRouter } from "./routes/registrations.js";
 import { exportsRouter } from "./routes/exports.js";
 import { adminRouter } from "./routes/admin.js";
+import { certsRouter } from "./routes/certs.js";
 import { errorHandler } from "./middleware/error.js";
 
 /**
@@ -41,6 +42,7 @@ export function createApp(): Express {
 
   app.use("/api/events", eventsRouter);
   app.use("/api", registrationsRouter); // mounts /register, /register/:id, /registrations/:id
+  app.use("/api", certsRouter); // mounts /register/:id/cert-challenge, /register/:id/issue-cert
   app.use("/api", exportsRouter); // mounts /export/:id
   app.use("/api/admin", adminRouter); // mounts /wallet/info, /wallet/funding-request
 

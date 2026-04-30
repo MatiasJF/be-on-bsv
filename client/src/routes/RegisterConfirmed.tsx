@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import QRCode from "qrcode";
@@ -7,12 +7,18 @@ import { api, ApiError } from "../lib/api.js";
 import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
 import { formatEventDateTime } from "../lib/format.js";
+import {
+  METANET_DESKTOP_INSTALL_URL,
+  signIssueCertChallenge,
+  useAttendeeWallet,
+} from "../lib/attendee-wallet.js";
 
 interface State {
   registration: Registration;
   event: {
     title: string;
     starts_at: string;
+    ends_at: string | null;
     location: string | null;
     is_virtual: boolean;
     meeting_url: string | null;
@@ -177,6 +183,33 @@ export function RegisterConfirmed() {
           </div>
         )}
 
+        <CertPanel
+          registrationId={registration.id}
+          certIssued={Boolean(registration.cert_issued_at)}
+          attendeeIdentityKey={registration.attendee_identity_key ?? null}
+          certSerial={registration.cert_serial ?? null}
+          eventEndsAt={event?.ends_at ?? null}
+          eventStartsAt={event?.starts_at ?? null}
+          rewardClaimedAt={registration.reward_claimed_at ?? null}
+          rewardSats={registration.reward_sats ?? null}
+          onIssued={(cert) => {
+            // Update local state so the UI reflects success without a refetch.
+            setState((s) =>
+              s
+                ? {
+                    ...s,
+                    registration: {
+                      ...s.registration,
+                      attendee_identity_key: cert.attendeeIdentityKey,
+                      cert_serial: cert.serial,
+                      cert_issued_at: cert.issuedAt,
+                    },
+                  }
+                : s,
+            );
+          }}
+        />
+
         <div className="flex flex-wrap gap-3 justify-center">
           <Link to="/">
             <Button variant="secondary">← Back to events</Button>
@@ -204,6 +237,163 @@ function TicketPreview({ src }: { src: string }) {
   return (
     <div className="mx-auto mb-6 max-w-md rounded-2xl overflow-hidden border border-white/10 bg-white/[0.02]">
       <img src={src} alt="Your BE-on-BSV ticket" className="block w-full h-auto" />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cert panel — three states:
+//   1. Wallet not connected → "Connect MetaNet Desktop" CTA
+//   2. Wallet connected, cert not issued → "Issue cert" button
+//   3. Cert issued → cert info + claim-reward placeholder (Branch 3 enables)
+// ─────────────────────────────────────────────────────────────
+
+interface CertPanelProps {
+  registrationId: string;
+  certIssued: boolean;
+  attendeeIdentityKey: string | null;
+  certSerial: string | null;
+  eventEndsAt: string | null;
+  eventStartsAt: string | null;
+  rewardClaimedAt: string | null;
+  rewardSats: number | null;
+  onIssued: (cert: import("../lib/api.js").AttendeeCert) => void;
+}
+
+function CertPanel(props: CertPanelProps) {
+  const { wallet, identityKey, loading: walletLoading, error: walletError, connect } =
+    useAttendeeWallet();
+  const [issuing, setIssuing] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
+
+  const onIssue = useCallback(async () => {
+    if (!wallet) return;
+    setIssuing(true);
+    setIssueError(null);
+    try {
+      const { nonce } = await api.cert.challenge(props.registrationId);
+      const { identityKey: pubkey, signature } = await signIssueCertChallenge({
+        wallet,
+        registrationId: props.registrationId,
+        nonce,
+      });
+      const { cert } = await api.cert.issue(props.registrationId, {
+        identityKey: pubkey,
+        nonce,
+        signature,
+      });
+      props.onIssued(cert);
+    } catch (e) {
+      setIssueError(e instanceof ApiError ? e.message : (e as Error).message ?? "issuance failed");
+    } finally {
+      setIssuing(false);
+    }
+  }, [wallet, props]);
+
+  // ── State 3: cert already issued ──
+  if (props.certIssued) {
+    const ended =
+      props.eventEndsAt
+        ? new Date(props.eventEndsAt) < new Date()
+        : props.eventStartsAt
+          ? new Date(props.eventStartsAt) < new Date()
+          : false;
+    return (
+      <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-bsva-cyan/[0.06] p-4 text-left">
+        <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+          Registration certificate
+        </div>
+        <div className="text-white/80 font-body text-sm mb-2">
+          ✓ Cert issued to your wallet.
+        </div>
+        {props.attendeeIdentityKey && (
+          <div className="font-mono text-[11px] text-white/60 break-all mb-2">
+            {props.attendeeIdentityKey}
+          </div>
+        )}
+        {props.certSerial && (
+          <div className="text-[11px] text-white/40 font-mono mb-3">
+            serial {props.certSerial.slice(0, 8)}…{props.certSerial.slice(-4)}
+          </div>
+        )}
+        {props.rewardClaimedAt ? (
+          <div className="text-bsva-cyan font-display font-semibold text-sm">
+            ✓ {props.rewardSats ?? 0} sats sent to your wallet.
+          </div>
+        ) : ended ? (
+          <button
+            disabled
+            className="px-4 py-2 rounded-full bg-bsva-blue/40 text-white/70 font-display font-semibold text-sm cursor-not-allowed"
+            title="Reward claim wires up in Branch 3"
+          >
+            Claim reward (coming soon)
+          </button>
+        ) : (
+          <div className="text-white/60 font-body text-xs">
+            Reward will be claimable after the event ends.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── State 2: wallet connected, cert not yet issued ──
+  if (wallet && identityKey) {
+    return (
+      <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-bsva-cyan/[0.06] p-4 text-left">
+        <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+          Wallet connected
+        </div>
+        <div className="font-mono text-[11px] text-white/60 break-all mb-3">
+          {identityKey}
+        </div>
+        {issueError && (
+          <div className="text-red-300 font-body text-xs mb-3">{issueError}</div>
+        )}
+        <button
+          onClick={onIssue}
+          disabled={issuing}
+          className="px-4 py-2 rounded-full bg-bsva-blue text-white font-display font-semibold text-sm hover:bg-bsva-cyan hover:text-bsva-navy transition-colors disabled:opacity-60"
+        >
+          {issuing ? "Issuing…" : "Issue my certificate"}
+        </button>
+      </div>
+    );
+  }
+
+  // ── State 1: wallet not connected — CTA ──
+  return (
+    <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-gradient-to-br from-bsva-blue/20 to-bsva-cyan/10 p-5 text-left">
+      <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+        Earn 100 sats
+      </div>
+      <div className="text-white/85 font-body text-sm leading-relaxed mb-4">
+        Connect your BSV browser wallet to receive a registration certificate.
+        After the event ends you'll be able to claim 100 sats from the server
+        wallet — straight to your wallet.
+      </div>
+      {walletError && (
+        <div className="text-red-300 font-body text-xs mb-3 leading-relaxed">
+          {walletError}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-3 items-center">
+        <button
+          onClick={connect}
+          disabled={walletLoading}
+          className="px-4 py-2 rounded-full bg-bsva-blue text-white font-display font-semibold text-sm hover:bg-bsva-cyan hover:text-bsva-navy transition-colors disabled:opacity-60"
+        >
+          {walletLoading ? "Connecting…" : "Connect wallet"}
+        </button>
+        <a
+          href={METANET_DESKTOP_INSTALL_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-bsva-cyan hover:text-white text-xs font-display font-semibold transition-colors"
+        >
+          Install MetaNet Desktop ↗
+        </a>
+      </div>
     </div>
   );
 }
