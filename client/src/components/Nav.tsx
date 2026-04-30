@@ -1,61 +1,82 @@
-import { Link, NavLink } from "react-router-dom";
-import { Logo } from "./Logo.js";
+import { Link, NavLink, useLocation } from "react-router-dom";
+
+/**
+ * Top navigation, light theme.
+ *
+ * Logo treatment per BSVA brand: small uppercase "BSV ASSOCIATION" eyebrow
+ * above a large "BE on BSV" wordmark. The "▶ events" subscript that used
+ * to follow "BE on BSV" is gone — the page itself is the events surface,
+ * we don't need to caption it.
+ *
+ * The "Upcoming" / "Events" nav button is also gone — the homepage hero
+ * is the upcoming list.
+ *
+ * Admin link is gated by either:
+ *   - `?admin=1` query string (lets us bookmark `/admin?admin=1` for
+ *     direct access while keeping the link out of public view), or
+ *   - `localStorage.beonbsv-admin-gate` already unlocked (so once an
+ *     admin has entered the gate password they don't lose the link on
+ *     subsequent navigations).
+ */
+function shouldShowAdminLink(search: string): boolean {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(search);
+  if (params.get("admin") === "1") return true;
+  try {
+    return window.localStorage.getItem("beonbsv-admin-gate") === "1";
+  } catch {
+    return false;
+  }
+}
 
 export function Nav() {
-  return (
-    <header className="sticky top-0 z-50">
-      <div className="glass border-b border-white/10">
-        <nav className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-6">
-          <Link to="/" className="flex items-center gap-3 group">
-            <Logo className="h-7 w-auto" />
-            <span className="hidden sm:flex items-baseline gap-2">
-              <span className="font-display font-semibold text-white text-lg leading-none">
-                BE on BSV
-              </span>
-              <span className="text-bsva-cyan text-xs font-body opacity-80">▶ events</span>
-            </span>
-          </Link>
+  const { search } = useLocation();
+  const showAdmin = shouldShowAdminLink(search);
 
-          <div className="flex items-center gap-1 sm:gap-2">
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-full text-sm font-body transition-colors ${
-                  isActive ? "text-bsva-cyan" : "text-white/80 hover:text-white"
-                }`
-              }
-            >
-              Upcoming
-            </NavLink>
-            <NavLink
-              to="/past"
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-full text-sm font-body transition-colors ${
-                  isActive ? "text-bsva-cyan" : "text-white/80 hover:text-white"
-                }`
-              }
-            >
-              Past
-            </NavLink>
-            <a
-              href="https://bsvassociation.org"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden md:inline-flex px-3 py-2 rounded-full text-sm font-body text-white/80 hover:text-white"
-            >
-              About BSVA ↗
-            </a>
+  return (
+    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-bsva-grey">
+      <nav className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-6">
+        <Link to="/" className="flex flex-col group">
+          <span className="text-[10px] tracking-[0.2em] uppercase text-bsva-navy/60 font-display font-semibold leading-none">
+            BSV Association
+          </span>
+          <span className="font-display font-semibold text-bsva-navy text-2xl leading-tight mt-0.5">
+            BE on BSV
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-1 sm:gap-2">
+          <NavLink
+            to="/past"
+            className={({ isActive }) =>
+              `px-3 py-2 rounded-full text-sm font-body transition-colors ${
+                isActive
+                  ? "text-bsva-blue"
+                  : "text-bsva-soft/70 hover:text-bsva-navy"
+              }`
+            }
+          >
+            Past
+          </NavLink>
+          <a
+            href="https://bsvassociation.org"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden md:inline-flex px-3 py-2 rounded-full text-sm font-body text-bsva-soft/70 hover:text-bsva-navy"
+          >
+            About BSVA ↗
+          </a>
+          {showAdmin && (
             <NavLink
               to="/admin"
-              className="ml-2 px-3 py-2 rounded-full text-xs font-body text-white/50 hover:text-white/80"
+              className="ml-2 px-3 py-2 rounded-full text-xs font-body text-bsva-soft/50 hover:text-bsva-navy"
               title="Admin"
             >
               admin
             </NavLink>
-          </div>
-        </nav>
-      </div>
+          )}
+        </div>
+      </nav>
     </header>
   );
 }

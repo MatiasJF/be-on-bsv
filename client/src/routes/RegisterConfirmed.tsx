@@ -63,7 +63,7 @@ export function RegisterConfirmed() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto px-6 pt-16">
-        <GlassCard className="p-8 text-center text-white/80 font-body">
+        <GlassCard className="p-8 text-center text-bsva-soft/80 font-body">
           We couldn't find that ticket.
         </GlassCard>
       </div>
@@ -74,8 +74,8 @@ export function RegisterConfirmed() {
     return (
       <div className="max-w-2xl mx-auto px-6 pt-16">
         <GlassCard className="p-12 animate-pulse">
-          <div className="h-6 w-1/2 bg-white/10 rounded mb-4" />
-          <div className="h-4 w-1/3 bg-white/10 rounded" />
+          <div className="h-6 w-1/2 bg-bsva-grey rounded mb-4" />
+          <div className="h-4 w-1/3 bg-bsva-grey rounded" />
         </GlassCard>
       </div>
     );
@@ -92,17 +92,17 @@ export function RegisterConfirmed() {
       className="max-w-2xl mx-auto px-6 pt-16 pb-24"
     >
       <GlassCard strong className="p-8 sm:p-12 text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-bsva-cyan/15 text-bsva-cyan text-xs font-display font-semibold uppercase tracking-wider mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-bsva-cyan/15 text-bsva-blue text-xs font-display font-semibold uppercase tracking-wider mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-bsva-cyan" />
           You're in
         </div>
 
-        <h1 className="font-display font-semibold text-3xl sm:text-4xl text-white mb-3">
+        <h1 className="font-display font-semibold text-3xl sm:text-4xl text-bsva-navy mb-3">
           {event?.title ?? "Your event"}
         </h1>
 
         {event && (
-          <div className="text-white/70 font-body mb-8">
+          <div className="text-bsva-soft/70 font-body mb-8">
             {formatEventDateTime(event.starts_at)}
             {" · "}
             {event.is_virtual ? "Online" : event.location ?? "TBA"}
@@ -111,23 +111,23 @@ export function RegisterConfirmed() {
 
         <TicketPreview src={state.ticket_svg_url} />
         {qrSvg && (
-          <details className="mb-6 text-white/60 font-body text-xs">
-            <summary className="cursor-pointer text-bsva-cyan hover:text-white transition-colors">
+          <details className="mb-6 text-bsva-soft/60 font-body text-xs">
+            <summary className="cursor-pointer text-bsva-blue hover:text-white transition-colors">
               Show plain QR
             </summary>
             <div
-              className="mx-auto mt-3 w-40 h-40 p-3 rounded-xl bg-white/[0.04] border border-white/10"
+              className="mx-auto mt-3 w-40 h-40 p-3 rounded-xl bg-bsva-grey/30 border border-bsva-grey"
               dangerouslySetInnerHTML={{ __html: qrSvg }}
             />
           </details>
         )}
 
         {registration.ord_txid ? (
-          <div className="text-left bg-white/5 border border-white/10 rounded-lg p-4 mb-4">
-            <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
-              Ord ticket {registration.ord_txid.startsWith("stub-") && <span className="text-white/40 normal-case">(local stub)</span>}
+          <div className="text-left bg-white/5 border border-bsva-grey rounded-lg p-4 mb-4">
+            <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-2">
+              Ord ticket {registration.ord_txid.startsWith("stub-") && <span className="text-bsva-soft/40 normal-case">(local stub)</span>}
             </div>
-            <div className="font-mono text-xs text-white/80 break-all">{registration.ord_txid}</div>
+            <div className="font-mono text-xs text-bsva-soft/80 break-all">{registration.ord_txid}</div>
             {state.ord_whats_on_chain_url && (
               <a
                 href={state.ord_whats_on_chain_url}
@@ -140,17 +140,17 @@ export function RegisterConfirmed() {
             )}
           </div>
         ) : (
-          <div className="text-white/60 font-body text-sm mb-4">
+          <div className="text-bsva-soft/60 font-body text-sm mb-4">
             Your ticket is being inscribed. We'll email you when it's ready.
           </div>
         )}
 
         {registration.tx_id && (
-          <div className="text-left bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
-            <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
-              Check-in token {isStub && <span className="text-white/40 normal-case">(local stub)</span>}
+          <div className="text-left bg-white/5 border border-bsva-grey rounded-lg p-4 mb-6">
+            <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-2">
+              Check-in token {isStub && <span className="text-bsva-soft/40 normal-case">(local stub)</span>}
             </div>
-            <div className="font-mono text-xs text-white/80 break-all">
+            <div className="font-mono text-xs text-bsva-soft/80 break-all">
               {registration.tx_id}
             </div>
             {state.whats_on_chain_url && (
@@ -158,7 +158,7 @@ export function RegisterConfirmed() {
                 href={state.whats_on_chain_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 mt-3 text-bsva-cyan hover:text-white text-xs font-display font-semibold transition-colors"
+                className="inline-flex items-center gap-1 mt-3 text-bsva-blue hover:text-white text-xs font-display font-semibold transition-colors"
               >
                 View on WhatsOnChain ↗
               </a>
@@ -168,7 +168,7 @@ export function RegisterConfirmed() {
 
         {event?.is_virtual && event.meeting_url && (
           <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-bsva-cyan/10 p-4 text-left">
-            <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+            <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-2">
               Meeting link
             </div>
             <a
@@ -179,7 +179,7 @@ export function RegisterConfirmed() {
             >
               Join the meeting ↗
             </a>
-            <div className="mt-2 text-xs text-white/60 font-mono break-all">
+            <div className="mt-2 text-xs text-bsva-soft/60 font-mono break-all">
               {event.meeting_url}
             </div>
           </div>
@@ -255,7 +255,7 @@ export function RegisterConfirmed() {
  */
 function TicketPreview({ src }: { src: string }) {
   return (
-    <div className="mx-auto mb-6 max-w-md rounded-2xl overflow-hidden border border-white/10 bg-white/[0.02]">
+    <div className="mx-auto mb-6 max-w-md rounded-2xl overflow-hidden border border-bsva-grey bg-white/[0.02]">
       <img src={src} alt="Your BE-on-BSV ticket" className="block w-full h-auto" />
     </div>
   );
@@ -349,25 +349,25 @@ function CertPanel(props: CertPanelProps) {
           : false;
     return (
       <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-bsva-cyan/[0.06] p-4 text-left">
-        <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+        <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-2">
           Registration certificate
         </div>
-        <div className="text-white/80 font-body text-sm mb-2">
+        <div className="text-bsva-soft/80 font-body text-sm mb-2">
           ✓ Cert issued to your wallet.
         </div>
         {props.attendeeIdentityKey && (
-          <div className="font-mono text-[11px] text-white/60 break-all mb-2">
+          <div className="font-mono text-[11px] text-bsva-soft/60 break-all mb-2">
             {props.attendeeIdentityKey}
           </div>
         )}
         {props.certSerial && (
-          <div className="text-[11px] text-white/40 font-mono mb-3">
+          <div className="text-[11px] text-bsva-soft/40 font-mono mb-3">
             serial {props.certSerial.slice(0, 8)}…{props.certSerial.slice(-4)}
           </div>
         )}
         {props.rewardClaimedAt ? (
           <div>
-            <div className="text-bsva-cyan font-display font-semibold text-sm mb-1">
+            <div className="text-bsva-blue font-display font-semibold text-sm mb-1">
               ✓ {props.rewardSats ?? 0} sats sent to your wallet.
             </div>
             {props.rewardWocUrl && (
@@ -375,7 +375,7 @@ function CertPanel(props: CertPanelProps) {
                 href={props.rewardWocUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-bsva-cyan hover:text-white text-xs font-display font-semibold transition-colors"
+                className="inline-flex items-center gap-1 text-bsva-blue hover:text-white text-xs font-display font-semibold transition-colors"
               >
                 View reward tx on WhatsOnChain ↗
               </a>
@@ -401,14 +401,14 @@ function CertPanel(props: CertPanelProps) {
               <button
                 onClick={connect}
                 disabled={walletLoading}
-                className="ml-3 text-bsva-cyan hover:text-white text-xs font-display font-semibold transition-colors"
+                className="ml-3 text-bsva-blue hover:text-white text-xs font-display font-semibold transition-colors"
               >
                 {walletLoading ? "Connecting…" : "Connect"}
               </button>
             )}
           </div>
         ) : (
-          <div className="text-white/60 font-body text-xs">
+          <div className="text-bsva-soft/60 font-body text-xs">
             Reward will be claimable after the event ends.
           </div>
         )}
@@ -420,10 +420,10 @@ function CertPanel(props: CertPanelProps) {
   if (wallet && identityKey) {
     return (
       <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-bsva-cyan/[0.06] p-4 text-left">
-        <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+        <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-2">
           Wallet connected
         </div>
-        <div className="font-mono text-[11px] text-white/60 break-all mb-3">
+        <div className="font-mono text-[11px] text-bsva-soft/60 break-all mb-3">
           {identityKey}
         </div>
         {issueError && (
@@ -443,10 +443,10 @@ function CertPanel(props: CertPanelProps) {
   // ── State 1: wallet not connected — CTA ──
   return (
     <div className="mb-6 rounded-xl border border-bsva-cyan/40 bg-gradient-to-br from-bsva-blue/20 to-bsva-cyan/10 p-5 text-left">
-      <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+      <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-2">
         Earn 100 sats
       </div>
-      <div className="text-white/85 font-body text-sm leading-relaxed mb-4">
+      <div className="text-bsva-soft/80 font-body text-sm leading-relaxed mb-4">
         Connect your BSV browser wallet to receive a registration certificate.
         After the event ends you'll be able to claim 100 sats from the server
         wallet — straight to your wallet.
@@ -477,7 +477,7 @@ function CertPanel(props: CertPanelProps) {
           href={METANET_DESKTOP_INSTALL_URL}
           target="_blank"
           rel="noreferrer"
-          className="text-bsva-cyan hover:text-white text-xs font-display font-semibold transition-colors"
+          className="text-bsva-blue hover:text-white text-xs font-display font-semibold transition-colors"
         >
           Install MetaNet Desktop ↗
         </a>

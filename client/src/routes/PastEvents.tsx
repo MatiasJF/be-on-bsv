@@ -25,16 +25,16 @@ export function PastEvents() {
       className="max-w-7xl mx-auto px-6 pt-16 pb-24"
     >
       <header className="mb-10">
-        <h1 className="font-display font-semibold text-4xl sm:text-5xl text-white mb-2">
+        <h1 className="font-display font-semibold text-4xl sm:text-5xl text-bsva-navy mb-2">
           Past sessions
         </h1>
-        <p className="text-white/60 font-body">Catch up on what we've shipped.</p>
+        <p className="text-bsva-soft/70 font-body">Catch up on what we've shipped.</p>
       </header>
 
-      {error && <GlassCard className="p-6 text-white/80">Couldn't load: {error}</GlassCard>}
+      {error && <GlassCard className="p-6 text-bsva-soft">Couldn't load: {error}</GlassCard>}
 
       {events && events.length === 0 && (
-        <GlassCard className="p-10 text-center text-white/70 font-body">
+        <GlassCard className="p-10 text-center text-bsva-soft/70 font-body">
           No past sessions yet.
         </GlassCard>
       )}

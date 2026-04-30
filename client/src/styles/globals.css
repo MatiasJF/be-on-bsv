@@ -79,9 +79,13 @@
   }
 
   body {
-    @apply font-body bg-bsva-soft text-white antialiased;
-    background: linear-gradient(160deg, #1b1ea9 0%, #0a0d4a 50%, #2d2d31 100%);
-    background-attachment: fixed;
+    /* BSVA-aligned light theme: ice background, soft-black body text,
+       headlines pick up navy/blue per the style guide. Dark mode endures
+       on the auto-cover splashes and cert/admin surfaces — those are
+       intentionally high-contrast accents on the otherwise-white site. */
+    @apply font-body antialiased;
+    background: var(--bsva-white);
+    color: var(--bsva-soft);
     min-height: 100dvh;
   }
 
@@ -90,8 +94,8 @@
   }
 
   ::selection {
-    background: rgba(0, 230, 255, 0.35);
-    color: #ffffff;
+    background: rgba(0, 63, 255, 0.18);
+    color: var(--bsva-navy);
   }
 
   /* Focus rings — cyan, on-brand */
@@ -103,20 +107,17 @@
 }
 
 @layer components {
-  /* Glass card — primary surface in dark mode */
+  /* Card surface — light theme. White-on-white with a subtle navy-ish
+     border so the card edges read against the page background. */
   .glass {
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    background: #ffffff;
+    border: 1px solid var(--bsva-grey);
+    box-shadow: 0 1px 2px rgba(27, 30, 169, 0.04), 0 4px 16px rgba(27, 30, 169, 0.06);
   }
 
   .glass-strong {
-    background: rgba(255, 255, 255, 0.09);
-    backdrop-filter: blur(28px) saturate(160%);
-    -webkit-backdrop-filter: blur(28px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    background: #ffffff;
+    border: 1px solid var(--bsva-ice);
+    box-shadow: 0 2px 4px rgba(27, 30, 169, 0.05), 0 8px 32px rgba(27, 30, 169, 0.08);
   }
 }

@@ -69,7 +69,7 @@ export function EventDetail() {
     return (
       <div className="max-w-3xl mx-auto px-6 pt-16">
         <GlassCard className="p-8 text-center">
-          <div className="text-white/80 font-body">Event not found.</div>
+          <div className="text-bsva-soft/80 font-body">Event not found.</div>
         </GlassCard>
       </div>
     );
@@ -79,8 +79,8 @@ export function EventDetail() {
     return (
       <div className="max-w-5xl mx-auto px-6 pt-16">
         <GlassCard className="p-12 animate-pulse">
-          <div className="h-8 w-2/3 bg-white/10 rounded mb-4" />
-          <div className="h-4 w-1/3 bg-white/10 rounded" />
+          <div className="h-8 w-2/3 bg-bsva-grey rounded mb-4" />
+          <div className="h-4 w-1/3 bg-bsva-grey rounded" />
         </GlassCard>
       </div>
     );
@@ -107,10 +107,10 @@ export function EventDetail() {
 
       <div className="grid lg:grid-cols-[1fr_400px] gap-8">
         <div>
-          <div className="text-bsva-cyan text-sm font-body mb-2">
+          <div className="text-bsva-blue text-sm font-body mb-2">
             {relativeWhen(event.starts_at)}
           </div>
-          <h1 className="font-display font-semibold text-4xl sm:text-5xl text-white leading-tight mb-4">
+          <h1 className="font-display font-semibold text-4xl sm:text-5xl text-bsva-navy leading-tight mb-4">
             {event.title}
           </h1>
           <div className="flex flex-wrap gap-2 mb-6">
@@ -119,14 +119,14 @@ export function EventDetail() {
             ))}
           </div>
           <div className="prose prose-invert max-w-none mb-8">
-            <p className="text-white/80 font-body text-lg leading-relaxed whitespace-pre-line">
+            <p className="text-bsva-soft/80 font-body text-lg leading-relaxed whitespace-pre-line">
               {event.description}
             </p>
           </div>
 
           {event.speakers.length > 0 && (
             <GlassCard className="p-6 mb-6">
-              <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-4">
+              <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-4">
                 {speakersHeading(event.speakers)}
               </div>
               <ul className="space-y-5">
@@ -136,24 +136,24 @@ export function EventDetail() {
                       <img
                         src={s.avatar_url}
                         alt=""
-                        className="w-14 h-14 rounded-full object-cover border border-white/10 flex-none"
+                        className="w-14 h-14 rounded-full object-cover border border-bsva-grey flex-none"
                       />
                     ) : (
-                      <div className="w-14 h-14 rounded-full bg-bsva-blue/20 border border-white/10 flex-none flex items-center justify-center font-display font-semibold text-bsva-cyan">
+                      <div className="w-14 h-14 rounded-full bg-bsva-blue/20 border border-bsva-grey flex-none flex items-center justify-center font-display font-semibold text-bsva-blue">
                         {s.name.slice(0, 1).toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <div className="font-display font-semibold text-white text-lg leading-tight">
+                      <div className="font-display font-semibold text-bsva-navy text-lg leading-tight">
                         {s.name}
                       </div>
                       {s.role && s.role !== "speaker" && (
-                        <div className="text-bsva-cyan text-xs font-display font-semibold uppercase tracking-wider mt-0.5">
+                        <div className="text-bsva-blue text-xs font-display font-semibold uppercase tracking-wider mt-0.5">
                           {s.role}
                         </div>
                       )}
                       {s.bio && (
-                        <div className="text-white/70 font-body text-sm mt-1.5 leading-relaxed">
+                        <div className="text-bsva-soft/70 font-body text-sm mt-1.5 leading-relaxed">
                           {s.bio}
                         </div>
                       )}
@@ -168,22 +168,22 @@ export function EventDetail() {
         {/* Sticky registration card */}
         <aside className="lg:sticky lg:top-24 self-start">
           <GlassCard strong className="p-6">
-            <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+            <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-2">
               When
             </div>
-            <div className="text-white font-display font-semibold text-lg mb-4">
+            <div className="text-bsva-navy font-display font-semibold text-lg mb-4">
               {formatEventDateTime(event.starts_at)}
             </div>
 
-            <div className="text-xs uppercase tracking-wider text-bsva-cyan font-display font-semibold mb-2">
+            <div className="text-xs uppercase tracking-wider text-bsva-blue font-display font-semibold mb-2">
               Where
             </div>
-            <div className="text-white font-body mb-6">
+            <div className="text-bsva-navy font-body mb-6">
               {event.is_virtual ? "Online" : event.location ?? "TBA"}
             </div>
 
-            <div className="border-t border-white/10 pt-6">
-              <div className="text-white font-display font-semibold mb-4">Register</div>
+            <div className="border-t border-bsva-grey pt-6">
+              <div className="text-bsva-navy font-display font-semibold mb-4">Register</div>
               <form onSubmit={onSubmit} className="space-y-3">
                 <Field
                   label="Name"
@@ -217,7 +217,7 @@ export function EventDetail() {
                 >
                   {submitting ? "Minting your ticket…" : "Register"}
                 </Button>
-                <p className="text-xs text-white/50 font-body text-center pt-2">
+                <p className="text-xs text-bsva-soft/50 font-body text-center pt-2">
                   By registering you'll get an on-chain ticket and a confirmation email.
                 </p>
               </form>
@@ -249,14 +249,14 @@ function speakersHeading(list: EventSpeaker[]): string {
 function Field({ label, value, onChange, type = "text", required, autoComplete }: FieldProps) {
   return (
     <label className="block">
-      <span className="block text-xs font-body text-white/60 mb-1">{label}</span>
+      <span className="block text-xs font-body text-bsva-soft/60 mb-1">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
         autoComplete={autoComplete}
-        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white font-body placeholder:text-white/30 focus:outline-none focus:border-bsva-cyan focus:bg-white/10 transition-colors"
+        className="w-full bg-bsva-grey/40 border border-bsva-grey rounded-lg px-3 py-2.5 text-bsva-navy font-body placeholder:text-bsva-soft/30 focus:outline-none focus:border-bsva-blue focus:bg-white transition-colors"
       />
     </label>
   );

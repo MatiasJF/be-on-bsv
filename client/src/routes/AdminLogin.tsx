@@ -38,13 +38,13 @@ export function AdminLogin() {
       className="max-w-md mx-auto px-6 pt-24"
     >
       <GlassCard strong className="p-8">
-        <h1 className="font-display font-semibold text-2xl text-white mb-2">Admin sign in</h1>
-        <p className="text-white/60 font-body text-sm mb-6">
+        <h1 className="font-display font-semibold text-2xl text-bsva-navy mb-2">Admin sign in</h1>
+        <p className="text-bsva-soft/60 font-body text-sm mb-6">
           We'll email you a magic link.
         </p>
 
         {sent ? (
-          <div className="text-bsva-cyan font-body">
+          <div className="text-bsva-blue font-body">
             Check your inbox — we sent a magic link to <strong>{email}</strong>.
           </div>
         ) : (
@@ -55,7 +55,7 @@ export function AdminLogin() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white font-body placeholder:text-white/30 focus:outline-none focus:border-bsva-cyan"
+              className="w-full bg-bsva-grey/40 border border-bsva-grey rounded-lg px-3 py-2.5 text-bsva-navy font-body placeholder:text-bsva-soft/30 focus:outline-none focus:border-bsva-cyan"
             />
             {error && <div className="text-red-300 text-sm font-body">{error}</div>}
             <Button type="submit" variant="primary" className="w-full" disabled={busy}>

@@ -232,18 +232,17 @@ font-display  → Chillax (default Semibold)
 font-body     → Noto Sans (default Regular)
 ```
 
-### Dark mode (default) — how we honor the brand AND get the Web3 vibe
+### Light mode (default) — BSVA-aligned
 
-The BSVA guide explicitly endorses dark mode (white-on-dark variants exist for every logo + the tagline). We treat **dark as the default** because the spec asks for a Web3 aesthetic, and we layer:
+We default to the **light brand variant** to match `bsvassociation.org`. The dark theme has been retired except for a few intentional accent surfaces (the inscribed-SVG ticket cover, the auto-generated event card splashes — those stay vivid).
 
-- **Background**: vertical gradient `Navy #1B1EA9 → Soft Black #2D2D31`, with the **tessellating triangle pattern** from §03 of the brand guide as a 6–8% opacity SVG overlay.
-- **Surfaces (cards, modals, nav)**: glassmorphism — `background: rgba(255,255,255,0.06)`, `backdrop-filter: blur(20px) saturate(140%)`, `border: 1px solid rgba(255,255,255,0.10)`, `box-shadow: 0 8px 32px rgba(0,0,0,0.35)`.
-- **Primary CTA**: solid `Blue #003FFF`, hover lift + cyan glow.
-- **Interactive accent**: `Cyan #00E6FF` for links, focus rings, the on-chain "ticket minted" confirmation, and the apex of any decorative triangle.
-- **Text**: white headlines (Chillax Semibold), white-90% body (Noto Sans Regular).
-- **Logo in nav**: `logo-white-linear.svg`.
-
-A **light mode toggle** is available, fully aligned with the official light system (Grey/Ice backgrounds, Navy headlines, Soft Black body, blue logo). This is the "fallback" theme; dark is the marketed look.
+- **Background**: BSVA white (`#FFFFFF`) page, with the tessellating triangle pattern from §03 of the brand guide as a ~4% opacity navy-stroke overlay so it reads as paper texture rather than decoration.
+- **Surfaces (cards, panels, nav)**: clean white with a subtle navy-tinted shadow + ice/grey border (`globals.css → .glass` redefined as a light surface).
+- **Primary CTA**: solid `Blue #003FFF`, hover deepens to Navy.
+- **Secondary CTA**: ice/grey filled button, navy text.
+- **Interactive accent**: `Blue #003FFF` for links, focus rings, ord/cert links. `Cyan #00E6FF` is reserved for the BE-on-BSV ticket SVG and the cert-issued check mark.
+- **Text**: Navy headlines (Chillax Semibold), Soft Black body (Noto Sans Regular). Tailwind: `text-bsva-navy` / `text-bsva-soft`.
+- **Logo in nav**: text-only wordmark — small uppercase "BSV ASSOCIATION" eyebrow above a large "BE on BSV" Chillax. The blue/white logo SVGs are still in `client/src/assets/brand/` for future use (favicon, social images, …).
 
 ### Photography & illustration (when used)
 Per §07 of the brand guide: photography is full-colour, framed in a large triangle that bleeds off one side, with an element of the subject breaking out. We **do not** invent imagery — if a hero image is needed, we either use a placeholder or copy a single approved photo from `05_Images/RGB_Digital/` (and add it to the table above). For v1 we lean on the triangle tessellation pattern instead of photos.
