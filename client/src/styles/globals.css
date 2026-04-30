@@ -107,17 +107,20 @@
 }
 
 @layer components {
-  /* Card surface — light theme. White-on-white with a subtle navy-ish
-     border so the card edges read against the page background. */
+  /* Card surface — dark navy/blue blocks on the white page. The user
+     explicitly asked for "blue cards like last time" while keeping the
+     body white, so cards become high-contrast standout surfaces. White
+     text inside; the page-level (outside-card) text stays soft-black/
+     navy for readability against the white body. */
   .glass {
-    background: #ffffff;
-    border: 1px solid var(--bsva-grey);
-    box-shadow: 0 1px 2px rgba(27, 30, 169, 0.04), 0 4px 16px rgba(27, 30, 169, 0.06);
+    background: linear-gradient(160deg, #1B1EA9 0%, #0a0d4a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 8px 32px rgba(27, 30, 169, 0.18);
   }
 
   .glass-strong {
-    background: #ffffff;
-    border: 1px solid var(--bsva-ice);
-    box-shadow: 0 2px 4px rgba(27, 30, 169, 0.05), 0 8px 32px rgba(27, 30, 169, 0.08);
+    background: linear-gradient(160deg, #1B1EA9 0%, #003FFF 60%, #0a0d4a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 12px 48px rgba(27, 30, 169, 0.22);
   }
 }

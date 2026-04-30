@@ -208,7 +208,7 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
             />
           </Field>
 
-          <label className="inline-flex items-center gap-2 text-bsva-soft/80 font-body text-sm">
+          <label className="inline-flex items-center gap-2 text-white/80 font-body text-sm">
             <input
               type="checkbox"
               checked={form.is_virtual}
@@ -227,7 +227,7 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
                 placeholder="https://…"
                 className={inputCls}
               />
-              <span className="block mt-1 text-xs text-bsva-soft/40 font-body">
+              <span className="block mt-1 text-xs text-white/40 font-body">
                 Only sent to registrants — never shown publicly.
               </span>
             </Field>
@@ -248,17 +248,17 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
               type="file"
               accept="image/*"
               onChange={onCoverChange}
-              className="text-bsva-soft/80 font-body text-sm file:mr-4 file:px-4 file:py-2 file:rounded-full file:border-0 file:bg-bsva-blue file:text-bsva-navy file:font-display file:font-semibold"
+              className="text-white/80 font-body text-sm file:mr-4 file:px-4 file:py-2 file:rounded-full file:border-0 file:bg-bsva-blue file:text-white file:font-display file:font-semibold"
             />
             {coverFile && !coverError && (
-              <div className="text-xs text-bsva-blue font-body mt-2">
+              <div className="text-xs text-bsva-cyan font-body mt-2">
                 Selected: {coverFile.name} ({formatBytes(coverFile.size)})
               </div>
             )}
             {coverError && <ErrorBanner>{coverError}</ErrorBanner>}
             {form.cover_url && !coverFile && !coverError && (
-              <div className="text-xs text-bsva-soft/50 font-body mt-2">
-                Current: <span className="text-bsva-blue">{form.cover_url}</span>
+              <div className="text-xs text-white/50 font-body mt-2">
+                Current: <span className="text-bsva-cyan">{form.cover_url}</span>
               </div>
             )}
           </Field>
@@ -312,22 +312,22 @@ function SpeakersEditor({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <span className="block text-xs font-body text-bsva-soft/60">
+        <span className="block text-xs font-body text-white/60">
           Speakers ({speakers.length}/10)
         </span>
         <button
           type="button"
           onClick={addRow}
           disabled={speakers.length >= 10}
-          className="text-xs text-bsva-blue hover:text-bsva-navy font-display font-semibold disabled:opacity-40"
+          className="text-xs text-bsva-cyan hover:text-white font-display font-semibold disabled:opacity-40"
         >
           + Add speaker
         </button>
       </div>
 
       {speakers.length === 0 && (
-        <div className="text-sm text-bsva-soft/40 font-body italic">
-          No speakers yet. Click <span className="text-bsva-blue">+ Add speaker</span> to add a host or panelist.
+        <div className="text-sm text-white/40 font-body italic">
+          No speakers yet. Click <span className="text-bsva-cyan">+ Add speaker</span> to add a host or panelist.
         </div>
       )}
 
@@ -335,17 +335,17 @@ function SpeakersEditor({
         {speakers.map((s, i) => (
           <div
             key={s.id ?? `new-${i}`}
-            className="rounded-xl border border-bsva-grey bg-white/[0.03] p-4"
+            className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-display font-semibold text-bsva-blue uppercase tracking-wider">
+                <span className="text-xs font-display font-semibold text-bsva-cyan uppercase tracking-wider">
                   #{i + 1}
                 </span>
                 <select
                   value={s.role}
                   onChange={(e) => updateRow(i, { role: e.target.value })}
-                  className="bg-bsva-grey/40 border border-bsva-grey rounded-md px-2 py-1 text-xs font-body text-bsva-navy focus:outline-none focus:border-bsva-cyan"
+                  className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs font-body text-white focus:outline-none focus:border-bsva-cyan"
                 >
                   <option value="host">host</option>
                   <option value="speaker">speaker</option>
@@ -432,7 +432,7 @@ function IconButton({
       className={`w-7 h-7 rounded-md border font-display font-semibold text-sm transition-colors ${
         danger
           ? "border-red-400/30 text-red-300 hover:bg-red-500/10 disabled:opacity-40"
-          : "border-bsva-grey text-bsva-soft/70 hover:text-bsva-navy hover:bg-bsva-grey disabled:opacity-40"
+          : "border-white/10 text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-40"
       } disabled:cursor-not-allowed`}
     >
       {children}
@@ -445,7 +445,7 @@ function IconButton({
 // ─────────────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full bg-bsva-grey/40 border border-bsva-grey rounded-lg px-3 py-2.5 text-bsva-navy font-body placeholder:text-bsva-soft/30 focus:outline-none focus:border-bsva-cyan focus:bg-bsva-grey transition-colors";
+  "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white font-body placeholder:text-white/30 focus:outline-none focus:border-bsva-cyan focus:bg-white/10 transition-colors";
 
 function Field({
   label,
@@ -458,8 +458,8 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs font-body text-bsva-soft/60 mb-1">
-        {label} {required && <span className="text-bsva-blue">*</span>}
+      <span className="block text-xs font-body text-white/60 mb-1">
+        {label} {required && <span className="text-bsva-cyan">*</span>}
       </span>
       {children}
     </label>

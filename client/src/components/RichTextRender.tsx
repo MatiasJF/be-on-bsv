@@ -47,7 +47,7 @@ export function RichTextRender({ html, className }: Props) {
       <div
         className={
           className ??
-          "prose prose-invert max-w-none text-white/85 font-body leading-relaxed prose-headings:text-white prose-strong:text-white prose-a:text-bsva-cyan"
+          "prose max-w-none text-bsva-soft font-body leading-relaxed prose-headings:text-bsva-navy prose-strong:text-bsva-navy prose-a:text-bsva-blue"
         }
         dangerouslySetInnerHTML={{ __html: sanitized }}
       />
@@ -58,7 +58,8 @@ export function RichTextRender({ html, className }: Props) {
   return (
     <p
       className={
-        className ?? "text-white/80 font-body text-lg leading-relaxed whitespace-pre-line"
+        className ??
+        "text-bsva-soft font-body text-lg leading-relaxed whitespace-pre-line"
       }
     >
       {html}

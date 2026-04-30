@@ -65,15 +65,15 @@ export function Home() {
               Upcoming sessions
             </h2>
           </div>
-          <div className="inline-flex bg-bsva-grey rounded-full p-1">
+          <div className="inline-flex glass rounded-full p-1">
             {(["cards", "month", "week"] as const).map((opt) => (
               <button
                 key={opt}
                 onClick={() => setView(opt)}
                 className={`px-4 py-2 rounded-full text-sm font-display font-semibold capitalize transition-all ${
                   view === opt
-                    ? "bg-bsva-blue text-white"
-                    : "text-bsva-soft/70 hover:text-bsva-navy"
+                    ? "bg-bsva-cyan text-bsva-navy"
+                    : "text-white/70 hover:text-white"
                 }`}
               >
                 {opt}
@@ -83,8 +83,8 @@ export function Home() {
         </div>
 
         {error && (
-          <GlassCard className="p-6 text-bsva-soft">
-            Couldn't load events: <span className="text-bsva-blue">{error}</span>
+          <GlassCard className="p-6 text-white/80">
+            Couldn't load events: <span className="text-bsva-cyan">{error}</span>
           </GlassCard>
         )}
 
@@ -98,7 +98,7 @@ export function Home() {
 
         {events && events.length === 0 && (
           <GlassCard className="p-10 text-center">
-            <div className="text-bsva-soft/70 font-body">No upcoming sessions yet. Check back soon.</div>
+            <div className="text-white/70 font-body">No upcoming sessions yet. Check back soon.</div>
           </GlassCard>
         )}
 
