@@ -21,13 +21,20 @@ registrationsRouter.post(
     // 1. Validate the event exists and is not deleted.
     const { data: event, error: eventErr } = await supabase
       .from("events")
-      .select("id, title, starts_at, location, is_virtual, meeting_url")
+      .select("id, title, starts_at, ends_at, location, is_virtual, meeting_url")
       .eq("id", input.event_id)
       .is("deleted_at", null)
       .maybeSingle();
 
     if (eventErr) throw new HttpError(500, eventErr.message);
     if (!event) throw new HttpError(404, "event_not_found");
+
+    // Reject registrations on past events. UI hides the form already; this
+    // is the server-side safety net for direct API calls.
+    const cutoff = event.ends_at ?? event.starts_at;
+    if (new Date(cutoff).getTime() < Date.now()) {
+      throw new HttpError(410, "event_has_ended");
+    }
 
     // 2. Insert the registration row. Unique constraint on (event_id, email)
     //    will reject duplicates with 23505.
@@ -195,6 +202,9 @@ registrationsRouter.get(
       whats_on_chain_url: whatsOnChainTxUrl(reg.tx_id, env.BSV_NETWORK),
       ord_whats_on_chain_url: whatsOnChainTxUrl(reg.ord_txid, env.BSV_NETWORK),
       reward_whats_on_chain_url: whatsOnChainTxUrl(reg.reward_txid, env.BSV_NETWORK),
+      // Current REWARD_SATS for the CTA copy. The actual paid amount is
+      // recorded as `registration.reward_sats` on claim.
+      reward_sats_config: env.REWARD_SATS,
       // Relative path: served by this same Express app, so the browser
       // resolves it against the page host. Avoids depending on
       // PUBLIC_APP_URL being correctly configured for the page to work.

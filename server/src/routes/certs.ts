@@ -111,7 +111,7 @@ certsRouter.post(
       body: "",
     });
 
-    const sigValid = verifyWalletSignature({
+    const sigValid = await verifyWalletSignature({
       identityKey: body.identityKey,
       signatureHex: body.signature,
       message,
@@ -233,7 +233,7 @@ certsRouter.post(
       body: "",
     });
 
-    const sigValid = verifyWalletSignature({
+    const sigValid = await verifyWalletSignature({
       identityKey: body.identityKey,
       signatureHex: body.signature,
       message,

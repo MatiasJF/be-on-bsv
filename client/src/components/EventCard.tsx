@@ -42,9 +42,12 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
               {event.is_virtual ? "Online" : event.location ?? ""}
             </div>
 
-            {/* Description — exactly 2 lines reserved */}
+            {/* Summary — exactly 2 lines reserved. Falls back to a
+                truncated description for legacy rows that don't have a
+                summary set yet. Description may be HTML; strip tags
+                before showing a teaser. */}
             <p className="text-white/70 text-sm font-body line-clamp-2 mb-4 min-h-[2.5rem]">
-              {event.description}
+              {event.summary ?? stripTags(event.description).slice(0, 140)}
             </p>
 
             {/* Tags — pinned to the bottom of the card via mt-auto */}
@@ -60,18 +63,13 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
   );
 }
 
-/**
- * Auto-generated card cover. BSVA brand: navy/blue gradient ground, two
- * triangles (cyan apex on the bright corner, blue inset on the opposite),
- * event title centred. Deterministic per event via the `seed` prop so the
- * same card looks the same across reloads — currently used to vary the
- * triangle orientation a little.
- */
-function AutoCover({ title, seed }: { title: string; seed: string }) {
-  // Cheap deterministic toggle from the seed (event id) — flips which
-  // corner the cyan triangle anchors so cards in a row don't all look
-  // identical.
-  const flip = hashCode(seed) % 2 === 0;
+/** Cheap HTML-to-text used to teaser-truncate Tiptap-formatted descriptions. */
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function CoverPlaceholder({ title }: { title: string }) {
+  // Triangle motif placeholder, brand-aligned.
   return (
     <div className="w-full h-full relative bg-gradient-to-br from-bsva-navy via-bsva-blue/30 to-bsva-soft flex items-center justify-center overflow-hidden">
       <svg

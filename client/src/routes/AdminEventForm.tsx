@@ -5,6 +5,7 @@ import type { EventInput, EventSpeaker } from "@be-on-bsv/shared";
 import { api, ApiError } from "../lib/api.js";
 import { GlassCard } from "../components/GlassCard.js";
 import { Button } from "../components/Button.js";
+import { RichTextEditor } from "../components/RichTextEditor.js";
 
 interface AdminEventFormProps {
   mode: "create" | "edit";
@@ -23,6 +24,7 @@ const emptySpeaker = (position: number): EventSpeaker => ({
 
 const empty: EventInput = {
   title: "",
+  summary: null,
   description: "",
   starts_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   ends_at: null,
@@ -50,6 +52,7 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
     api.admin.getEvent(id).then((r) => {
       setForm({
         title: r.event.title,
+        summary: r.event.summary ?? null,
         description: r.event.description,
         starts_at: r.event.starts_at,
         ends_at: r.event.ends_at ?? null,
@@ -151,13 +154,25 @@ export function AdminEventForm({ mode }: AdminEventFormProps) {
             />
           </Field>
 
-          <Field label="Description" required>
-            <textarea
-              value={form.description}
-              onChange={(e) => update("description", e.target.value)}
-              rows={5}
-              required
+          <Field label="One-liner summary">
+            <input
+              type="text"
+              value={form.summary ?? ""}
+              onChange={(e) => update("summary", e.target.value || null)}
+              maxLength={200}
+              placeholder="Shown on event cards. ~140 chars."
               className={inputCls}
+            />
+            <span className="block mt-1 text-xs text-white/40 font-body">
+              {(form.summary ?? "").length}/200
+            </span>
+          </Field>
+
+          <Field label="Description" required>
+            <RichTextEditor
+              value={form.description}
+              onChange={(html) => update("description", html)}
+              placeholder="Tell people what they'll learn…"
             />
           </Field>
 
