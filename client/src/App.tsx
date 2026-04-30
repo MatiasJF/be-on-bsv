@@ -3,7 +3,6 @@ import { AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { Nav } from "./components/Nav.js";
 import { Footer } from "./components/Footer.js";
-import { TrianglePattern } from "./components/TrianglePattern.js";
 import { Home } from "./routes/Home.js";
 import { PastEvents } from "./routes/PastEvents.js";
 import { EventDetail } from "./routes/EventDetail.js";
@@ -19,7 +18,6 @@ export default function App() {
   const location = useLocation();
   return (
     <div className="relative min-h-dvh flex flex-col">
-      <TrianglePattern />
       <Nav />
       <main className="flex-1 relative z-10">
         <AnimatePresence mode="wait">
@@ -28,7 +26,11 @@ export default function App() {
             <Route path="/past" element={<PastEvents />} />
             <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/r/:id" element={<RegisterConfirmed />} />
-            <Route path="/admin/login" element={<AdminGate><AdminLogin /></AdminGate>} />
+            {/* Magic-link entry stays open so invited admins can sign in
+                without the dashboard gate. The gate is for the dashboard
+                surfaces below — it stops casual visitors from poking at
+                event-management UI while we're in private build mode. */}
+            <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
             <Route
               path="/admin/events/new"

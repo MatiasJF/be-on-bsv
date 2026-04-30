@@ -78,7 +78,7 @@ export function AdminDashboard() {
       </header>
 
       {error && (
-        <GlassCard className="p-6 text-bsva-soft/80 mb-6">
+        <GlassCard className="p-6 text-white/80 mb-6">
           {error}
         </GlassCard>
       )}
@@ -93,10 +93,10 @@ export function AdminDashboard() {
               className="p-5 flex items-center justify-between gap-4 flex-wrap"
             >
               <div className="min-w-0">
-                <div className="font-display font-semibold text-bsva-navy text-lg truncate">
+                <div className="font-display font-semibold text-white text-lg truncate">
                   {e.title}
                 </div>
-                <div className="text-bsva-soft/60 font-body text-sm">
+                <div className="text-white/60 font-body text-sm">
                   {formatEventDateTime(e.starts_at)}
                 </div>
               </div>
@@ -114,7 +114,7 @@ export function AdminDashboard() {
             </div>
           ))}
           {events && events.length === 0 && (
-            <div className="p-10 text-center text-bsva-soft/60 font-body">
+            <div className="p-10 text-center text-white/60 font-body">
               No events yet. Click <strong>+ New event</strong> to create one.
             </div>
           )}

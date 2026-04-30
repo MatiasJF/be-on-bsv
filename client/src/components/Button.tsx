@@ -7,11 +7,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "bg-bsva-blue text-white hover:bg-bsva-navy hover:translate-y-[-1px] focus-visible:ring-2 focus-visible:ring-bsva-blue",
+    "bg-bsva-blue text-white shadow-blue-glow hover:translate-y-[-1px] hover:shadow-cyan-glow focus-visible:ring-2 focus-visible:ring-bsva-cyan",
   secondary:
-    "bg-bsva-grey text-bsva-navy border border-bsva-ice hover:bg-bsva-ice",
+    "bg-bsva-navy text-white border border-bsva-blue hover:bg-bsva-blue hover:border-bsva-cyan",
   ghost:
-    "text-bsva-soft/70 hover:text-bsva-navy hover:bg-bsva-grey/50",
+    "text-bsva-navy hover:text-bsva-blue hover:bg-bsva-ice/50",
 };
 
 export function Button({

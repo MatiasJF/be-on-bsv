@@ -31,10 +31,10 @@ export function PastEvents() {
         <p className="text-bsva-soft/70 font-body">Catch up on what we've shipped.</p>
       </header>
 
-      {error && <GlassCard className="p-6 text-bsva-soft">Couldn't load: {error}</GlassCard>}
+      {error && <GlassCard className="p-6 text-white">Couldn't load: {error}</GlassCard>}
 
       {events && events.length === 0 && (
-        <GlassCard className="p-10 text-center text-bsva-soft/70 font-body">
+        <GlassCard className="p-10 text-center text-white/70 font-body">
           No past sessions yet.
         </GlassCard>
       )}
