@@ -46,7 +46,7 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
                 truncated description for legacy rows that don't have a
                 summary set yet. Description may be HTML; strip tags
                 before showing a teaser. */}
-            <p className="text-white/70 text-sm font-body line-clamp-2 mb-4 min-h-[2.5rem]">
+            <p className="text-bsva-soft/70 text-sm font-body line-clamp-2 mb-4 min-h-[2.5rem]">
               {event.summary ?? stripTags(event.description).slice(0, 140)}
             </p>
 
@@ -68,8 +68,16 @@ function stripTags(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function CoverPlaceholder({ title }: { title: string }) {
-  // Triangle motif placeholder, brand-aligned.
+/**
+ * Auto-generated card cover. BSVA brand: navy/blue gradient ground, two
+ * triangles (cyan apex on the bright corner, blue inset on the opposite),
+ * event title centred. Deterministic per event via the `seed` prop so the
+ * same card looks the same across reloads — currently used to vary the
+ * triangle orientation a little.
+ */
+function AutoCover({ title, seed }: { title: string; seed: string }) {
+  const flip = hashCode(seed) % 2 === 0;
+  const gradId = `grad-${seed}`;
   return (
     <div className="w-full h-full relative bg-gradient-to-br from-bsva-navy via-bsva-blue/30 to-bsva-soft flex items-center justify-center overflow-hidden">
       <svg
@@ -79,19 +87,19 @@ function CoverPlaceholder({ title }: { title: string }) {
         aria-hidden
       >
         <defs>
-          <linearGradient id={`grad-${seed}`} x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#00E6FF" stopOpacity="0.85" />
             <stop offset="100%" stopColor="#003FFF" stopOpacity="0.55" />
           </linearGradient>
         </defs>
         {flip ? (
           <>
-            <polygon points="320,0 320,180 140,0" fill={`url(#grad-${seed})`} />
+            <polygon points="320,0 320,180 140,0" fill={`url(#${gradId})`} />
             <polygon points="320,0 320,90 230,0" fill="#00E6FF" opacity="0.85" />
           </>
         ) : (
           <>
-            <polygon points="0,0 0,180 180,0" fill={`url(#grad-${seed})`} />
+            <polygon points="0,0 0,180 180,0" fill={`url(#${gradId})`} />
             <polygon points="0,0 0,90 90,0" fill="#00E6FF" opacity="0.85" />
           </>
         )}
