@@ -8,6 +8,7 @@ import { Home } from "./routes/Home.js";
 import { PastEvents } from "./routes/PastEvents.js";
 import { EventDetail } from "./routes/EventDetail.js";
 import { RegisterConfirmed } from "./routes/RegisterConfirmed.js";
+import { AdminGate } from "./routes/AdminGate.js";
 import { AdminLogin } from "./routes/AdminLogin.js";
 import { AdminDashboard } from "./routes/AdminDashboard.js";
 import { AdminEventForm } from "./routes/AdminEventForm.js";
@@ -27,11 +28,32 @@ export default function App() {
             <Route path="/past" element={<PastEvents />} />
             <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/r/:id" element={<RegisterConfirmed />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/events/new" element={<AdminEventForm mode="create" />} />
-            <Route path="/admin/events/:id/edit" element={<AdminEventForm mode="edit" />} />
-            <Route path="/admin/events/:id/registrations" element={<AdminRegistrations />} />
+            <Route path="/admin/login" element={<AdminGate><AdminLogin /></AdminGate>} />
+            <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
+            <Route
+              path="/admin/events/new"
+              element={
+                <AdminGate>
+                  <AdminEventForm mode="create" />
+                </AdminGate>
+              }
+            />
+            <Route
+              path="/admin/events/:id/edit"
+              element={
+                <AdminGate>
+                  <AdminEventForm mode="edit" />
+                </AdminGate>
+              }
+            />
+            <Route
+              path="/admin/events/:id/registrations"
+              element={
+                <AdminGate>
+                  <AdminRegistrations />
+                </AdminGate>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AnimatePresence>
